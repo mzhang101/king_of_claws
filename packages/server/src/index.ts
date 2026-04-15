@@ -100,7 +100,7 @@ registerMcpRoutes(app, roomManager);
 // ---- Static Files (production) ----
 // In production, serve the built React frontend from the same server
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const clientDistPath = join(__dirname, '../../../client/dist');
+const clientDistPath = join(__dirname, '../../client/dist');
 if (existsSync(clientDistPath)) {
   app.use(express.static(clientDistPath));
   // SPA fallback: serve index.html for all non-API routes
@@ -112,6 +112,8 @@ if (existsSync(clientDistPath)) {
     res.sendFile(join(clientDistPath, 'index.html'));
   });
   console.log('[Static] Serving frontend from', clientDistPath);
+} else {
+  console.log('[Static] Client dist not found at', clientDistPath);
 }
 
 // ---- WebSocket ----
