@@ -19,6 +19,21 @@ export function applyPowerUp(player: Player, powerup: PowerUp): void {
     case PowerUpType.SPEED:
       player.speed = Math.min(player.speed + 1, 2); // cap at 2
       break;
+    case PowerUpType.ARMOR:
+      player.armor = Math.max(player.armor, 1); // Basic armor (1 hit)
+      break;
+    case PowerUpType.HEAVY_ARMOR:
+      player.armor = 2; // Heavy armor (2 hits)
+      break;
+    case PowerUpType.HEALTH_PATCH:
+      player.health = Math.min(player.health + 1, 3); // cap at 3 (initial max)
+      break;
+    case PowerUpType.SPEED_BOOST:
+      player.speedBoostTicks = 10; // 10 ticks = 2 seconds
+      break;
+    case PowerUpType.SHAPE_FLOPPY:
+      player.crossBombActive = true; // Next bomb will be cross-shaped
+      break;
   }
 }
 

@@ -14,6 +14,11 @@ export enum PowerUpType {
   BOMB_COUNT = 'bomb_count',
   BOMB_RANGE = 'bomb_range',
   SPEED = 'speed',
+  ARMOR = 'armor',              // Basic armor: blocks 1 hit
+  HEAVY_ARMOR = 'heavy_armor',  // Heavy armor: blocks 2 hits
+  HEALTH_PATCH = 'health_patch', // Restore 1 HP
+  SPEED_BOOST = 'speed_boost',   // Temporary speed boost (10 ticks)
+  SHAPE_FLOPPY = 'shape_floppy', // Change bomb explosion shape to cross
 }
 
 // -- Directions --
@@ -40,6 +45,11 @@ export interface Player {
   color: string;
   lastActionTick: number;
   connected: boolean;
+  // New armor system
+  armor: number;        // 0 = no armor, 1 = basic, 2 = heavy
+  // Temporary effects
+  speedBoostTicks: number;  // remaining ticks of speed boost
+  crossBombActive: boolean; // next bomb will be cross-shaped
 }
 
 // -- Bomb --
@@ -50,6 +60,7 @@ export interface Bomb {
   y: number;
   range: number;
   ticksRemaining: number;
+  shape: 'point' | 'cross'; // Explosion shape: point (default) or cross
 }
 
 // -- Explosion --
@@ -82,8 +93,8 @@ export interface DangerZone {
 
 // -- Player Action --
 export type PlayerAction =
-  | { type: 'move'; direction: Direction }
-  | { type: 'place_bomb' };
+  | { type: 'move'; direction: Direction; thought?: string; shout?: string }
+  | { type: 'place_bomb'; thought?: string; shout?: string };
 
 // -- Action Result --
 export interface ActionResult {
@@ -93,6 +104,17 @@ export interface ActionResult {
   bombX?: number;
   bombY?: number;
   range?: number;
+}
+
+// -- Agent Action Log (for spectator display) --
+export interface AgentActionLog {
+  playerId: string;
+  playerName: string;
+  tick: number;
+  action: string;
+  thought?: string;
+  shout?: string;
+  timestamp: number;
 }
 
 // -- Game Status --
@@ -110,6 +132,9 @@ export interface GameState {
   powerups: PowerUp[];
   dangerZone: DangerZone;
   winner: string | null;
+  countdownRemaining: number | null;
+  recentActions: AgentActionLog[]; // Last 10 agent actions with thoughts
+}
   countdownRemaining: number | null;
 }
 

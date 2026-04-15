@@ -10,7 +10,13 @@ import { v4 as uuid } from 'uuid';
 /**
  * Create a new bomb at the given position.
  */
-export function createBomb(ownerId: string, x: number, y: number, range: number): Bomb {
+export function createBomb(
+  ownerId: string,
+  x: number,
+  y: number,
+  range: number,
+  shape: 'point' | 'cross' = 'point'
+): Bomb {
   return {
     id: uuid(),
     ownerId,
@@ -18,12 +24,14 @@ export function createBomb(ownerId: string, x: number, y: number, range: number)
     y,
     range,
     ticksRemaining: BOMB_TIMER_TICKS,
+    shape,
   };
 }
 
 /**
  * Calculate explosion tiles for a detonating bomb.
- * Propagates in 4 cardinal directions up to `range` tiles.
+ * - 'point' shape: only the center tile
+ * - 'cross' shape: propagates in 4 cardinal directions up to `range` tiles
  * Stops at walls (does not destroy them).
  * Stops at bricks (destroys them, but does not pass through).
  * Returns the set of affected tile positions and destroyed brick positions.
@@ -44,6 +52,18 @@ export function calculateExplosion(
   // Center tile always affected
   affectedTiles.push({ x: bomb.x, y: bomb.y });
 
+  // Check for chain reaction at center
+  const centerChain = bombs.find(b => b.x === bomb.x && b.y === bomb.y && b.id !== bomb.id);
+  if (centerChain) {
+    chainBombIds.push(centerChain.id);
+  }
+
+  // If point shape, only center explodes
+  if (bomb.shape === 'point') {
+    return { affectedTiles, destroyedBricks, chainBombIds };
+  }
+
+  // Cross shape: propagate in 4 directions
   const directions: Position[] = [
     { x: 0, y: -1 }, // up
     { x: 0, y: 1 },  // down

@@ -14,6 +14,7 @@ import type {
   ActionResult,
   TileType as TileTypeEnum,
   Position,
+  AgentActionLog,
 } from '@king-of-claws/shared';
 import {
   TileType,
@@ -50,6 +51,7 @@ export class GameEngine {
   private roomId: string;
   private onStateUpdate?: (state: GameState) => void;
   private onEvent?: EngineEventHandler;
+  private recentActions: AgentActionLog[] = []; // Store last 10 actions with thoughts
 
   constructor(roomId: string) {
     this.roomId = roomId;
@@ -161,6 +163,11 @@ export class GameEngine {
     this.stop();
     this.initMap();
     this.status = 'waiting';
+    this.winner = null;
+    this.recentActions = []; // Clear action logs on reset
+    this.broadcastState();
+  }
+    this.status = 'waiting';
     this.countdownRemaining = null;
 
     // Re-create players at spawn positions
@@ -230,7 +237,14 @@ export class GameEngine {
     // 4. Check power-up pickups
     this.checkPowerUps();
 
-    // 5. Update danger zone
+    // 5. Tick down temporary effects
+    for (const player of this.players.values()) {
+      if (player.speedBoostTicks > 0) {
+        player.speedBoostTicks--;
+      }
+    }
+
+    // 6. Update danger zone
     this.updateZone();
 
     // 6. Apply zone damage
@@ -256,6 +270,22 @@ export class GameEngine {
       const player = this.players.get(playerId);
       if (!player || !player.alive) continue;
 
+      // Log action with thought and shout
+      const actionLog: AgentActionLog = {
+        playerId: player.id,
+        playerName: player.name,
+        tick: this.currentTick,
+        action: action.type === 'move' ? `move_${action.direction}` : 'place_bomb',
+        thought: action.thought,
+        shout: action.shout,
+        timestamp: Date.now(),
+      };
+      this.recentActions.push(actionLog);
+      // Keep only last 10 actions
+      if (this.recentActions.length > 10) {
+        this.recentActions.shift();
+      }
+
       if (action.type === 'move') {
         const result = validateMove(player, action.direction, this.grid, this.bombs);
         if (result.accepted && result.projectedPosition) {
@@ -265,9 +295,11 @@ export class GameEngine {
       } else if (action.type === 'place_bomb') {
         const result = validatePlaceBomb(player, this.bombs);
         if (result.accepted) {
-          const bomb = createBomb(player.id, player.x, player.y, player.bombRange);
+          const shape = player.crossBombActive ? 'cross' : 'point';
+          const bomb = createBomb(player.id, player.x, player.y, player.bombRange, shape);
           this.bombs.push(bomb);
           player.activeBombs++;
+          player.crossBombActive = false; // Consume the cross bomb effect
 
           this.emitEvent({
             event: 'bomb_placed',
@@ -471,6 +503,7 @@ export class GameEngine {
       dangerZone: this.dangerZone,
       winner: this.winner,
       countdownRemaining: this.countdownRemaining,
+      recentActions: this.recentActions,
     };
   }
 

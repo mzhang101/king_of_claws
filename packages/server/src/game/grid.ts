@@ -66,7 +66,16 @@ export function generateGrid(): {
   for (let y = 0; y < GRID_HEIGHT; y++) {
     for (let x = 0; x < GRID_WIDTH; x++) {
       if (grid[y][x] === TileType.BRICK && Math.random() < POWERUP_SPAWN_CHANCE) {
-        const types = [PowerUpType.BOMB_COUNT, PowerUpType.BOMB_RANGE, PowerUpType.SPEED];
+        const types = [
+          PowerUpType.BOMB_COUNT,
+          PowerUpType.BOMB_RANGE,
+          PowerUpType.SPEED,
+          PowerUpType.ARMOR,
+          PowerUpType.HEAVY_ARMOR,
+          PowerUpType.HEALTH_PATCH,
+          PowerUpType.SPEED_BOOST,
+          PowerUpType.SHAPE_FLOPPY,
+        ];
         hiddenPowerups.push({
           id: uuid(),
           x,
