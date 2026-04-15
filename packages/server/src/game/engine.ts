@@ -293,7 +293,8 @@ export class GameEngine {
       } else if (action.type === 'place_bomb') {
         const result = validatePlaceBomb(player, this.bombs);
         if (result.accepted) {
-          const shape = player.crossBombActive ? 'cross' : 'point';
+          // All bombs are now cross-shaped by default
+          const shape = 'cross';
           const bomb = createBomb(player.id, player.x, player.y, player.bombRange, shape);
           this.bombs.push(bomb);
           player.activeBombs++;
