@@ -69,9 +69,12 @@ export function registerMcpRoutes(app: Express, roomManager: RoomManager): void 
     // Add player to game
     const player = engine.addPlayer(playerId, playerName);
     if (!player) {
+      console.log(`[MCP] Failed to add player to room ${roomId}`);
       res.status(500).json({ error: 'Failed to add player' });
       return;
     }
+
+    console.log(`[MCP] Player added: ${playerId} (${playerName}) to room ${roomId}`);
 
     // Notify room of new player
     room.onPlayerConnected(playerId, playerName);
@@ -90,6 +93,8 @@ export function registerMcpRoutes(app: Express, roomManager: RoomManager): void 
     // Store session
     sessions.set(sessionKey, { mcpServer, transport, playerToken });
 
+    console.log(`[MCP] SSE session established: ${sessionKey}`);
+
     // Send player URL in SSE comment (visible to client)
     const publicUrl = process.env.PUBLIC_URL || 'http://localhost:3001';
     const playerUrl = `${publicUrl}/player/${playerToken}`;
@@ -97,6 +102,7 @@ export function registerMcpRoutes(app: Express, roomManager: RoomManager): void 
 
     // Handle disconnect
     res.on('close', () => {
+      console.log(`[MCP] SSE connection closed: ${sessionKey}`);
       sessions.delete(sessionKey);
       engine.removePlayer(playerId);
       room.onPlayerDisconnected(playerId);

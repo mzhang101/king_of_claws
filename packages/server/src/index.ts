@@ -11,6 +11,7 @@ import { fileURLToPath } from 'url';
 import { SERVER_PORT, PUBLIC_URL } from '@king-of-claws/shared';
 import { RoomManager } from './room/manager.js';
 import { registerMcpRoutes } from './mcp/transport.js';
+import { registerDebugRoutes } from './routes/debug.js';
 import { setupSpectatorWebSocket } from './ws/spectator.js';
 import { spawnBot } from './game/bot.js';
 import {
@@ -108,6 +109,9 @@ app.get('/api/rooms/:roomId', (req, res) => {
 
 // ---- MCP Routes ----
 registerMcpRoutes(app, roomManager);
+
+// ---- Debug Routes ----
+registerDebugRoutes(app, roomManager);
 
 // ---- Player Account API ----
 
