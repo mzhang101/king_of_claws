@@ -212,10 +212,10 @@ export default function GameBoard({ roomId, onBack }: GameBoardProps) {
               Configure OpenClaw MCP:
             </p>
             <div className="bg-black border border-green-500 rounded p-3 text-xs font-mono text-green-400 break-all select-all leading-relaxed">
-              {mcpUrl}/&lt;name&gt;/sse
+              {mcpUrl}
             </div>
             <p className="text-xs text-gray-600 mt-2 font-mono">
-              Replace &lt;name&gt; with agent ID
+              Auto-assigns player ID and name
             </p>
           </div>
         </div>
