@@ -33,12 +33,18 @@ export function registerMcpRoutes(app: Express, roomManager: RoomManager): void 
 
     const room = roomManager.getRoom(roomId);
     if (!room) {
-      res.status(404).json({ error: 'Room not found' });
+      res.status(404).json({
+        error: 'Room not found',
+        message: 'This room no longer exists. It may have been cleaned up after finishing. Please create a new room from the lobby.'
+      });
       return;
     }
 
     if (room.getStatus() === 'finished') {
-      res.status(400).json({ error: 'Game already finished' });
+      res.status(400).json({
+        error: 'Game already finished',
+        message: 'This game has ended. Please create a new room from the lobby to start a fresh game.'
+      });
       return;
     }
 

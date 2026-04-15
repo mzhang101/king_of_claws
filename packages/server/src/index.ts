@@ -39,9 +39,11 @@ app.get('/api/health', (_req, res) => {
   res.json({ name: 'King of Claws', version: '1.0.0', status: 'running' });
 });
 
-// List rooms
+// List rooms (only active ones)
 app.get('/api/rooms', (_req, res) => {
-  res.json(roomManager.listRooms());
+  const allRooms = roomManager.listRooms();
+  const activeRooms = allRooms.filter(room => room.status !== 'finished');
+  res.json(activeRooms);
 });
 
 // Create room
