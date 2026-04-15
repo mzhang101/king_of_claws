@@ -1,0 +1,22 @@
+{
+  "name": "king-of-claws",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/shared",
+    "packages/server",
+    "packages/client"
+  ],
+  "scripts": {
+    "dev": "concurrently -n server,client -c blue,green \"npm run dev -w packages/server\" \"npm run dev -w packages/client\"",
+    "server": "npm run dev -w packages/server",
+    "client": "npm run dev -w packages/client",
+    "bot": "npx tsx scripts/test-bot.ts",
+    "build": "npm run build -w packages/shared && npm run build -w packages/server && npm run build -w packages/client"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0",
+    "typescript": "^5.7.0"
+  }
+}

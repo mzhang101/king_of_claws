@@ -1,0 +1,21 @@
+# ============================================================
+# King of Claws — Docker Compose
+# ============================================================
+# Usage:
+#   PUBLIC_URL=http://your-server-ip:3001 docker compose up -d
+#
+# Or create a .env file:
+#   PUBLIC_URL=http://your-server-ip:3001
+#   PORT=3001
+
+services:
+  king-of-claws:
+    build: .
+    ports:
+      - "${PORT:-3001}:${PORT:-3001}"
+    environment:
+      - PORT=${PORT:-3001}
+      - HOST=0.0.0.0
+      - PUBLIC_URL=${PUBLIC_URL:-http://localhost:3001}
+      - NODE_ENV=production
+    restart: unless-stopped
