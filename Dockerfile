@@ -26,6 +26,8 @@ COPY packages/client packages/client
 RUN npm run build -w packages/shared 2>/dev/null || true
 
 # Build frontend (produces packages/client/dist)
+# Increase Node.js memory limit for Railway's limited resources
+ENV NODE_OPTIONS="--max-old-space-size=2048"
 RUN npm run build -w packages/client
 
 # ---- Stage 2: Run ----
