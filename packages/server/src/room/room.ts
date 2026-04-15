@@ -11,6 +11,7 @@ export class Room {
   readonly id: string;
   readonly name: string;
   readonly createdAt: number;
+  private finishedAt: number | null = null;
   private engine: GameEngine;
   private spectators: Set<WebSocket> = new Set();
   private playerNames: Map<string, string> = new Map(); // id → name
@@ -31,6 +32,7 @@ export class Room {
 
       // Check for game over
       if (this.engine.getStatus() === 'finished') {
+        this.finishedAt = Date.now();
         const state = this.engine.getState();
         const winnerPlayer = state.players.find(p => p.id === state.winner);
         this.broadcastToSpectators({
@@ -51,6 +53,10 @@ export class Room {
 
   getStatus(): GameStatus {
     return this.engine.getStatus();
+  }
+
+  getFinishedAt(): number | null {
+    return this.finishedAt;
   }
 
   // ---- Player Events ----

@@ -30,9 +30,11 @@ export function registerMcpRoutes(app: Express, roomManager: RoomManager): void 
   // SSE connection endpoint - auto-assigns player ID and name
   app.get('/mcp/:roomId/sse', async (req: Request, res: Response) => {
     const roomId = req.params.roomId as string;
+    console.log(`[MCP] SSE connection request for room: ${roomId}`);
 
     const room = roomManager.getRoom(roomId);
     if (!room) {
+      console.log(`[MCP] Room not found: ${roomId}`);
       res.status(404).json({
         error: 'Room not found',
         message: 'This room no longer exists. It may have been cleaned up after finishing. Please create a new room from the lobby.'
@@ -40,7 +42,10 @@ export function registerMcpRoutes(app: Express, roomManager: RoomManager): void 
       return;
     }
 
+    console.log(`[MCP] Room found: ${roomId}, status: ${room.getStatus()}`);
+
     if (room.getStatus() === 'finished') {
+      console.log(`[MCP] Room already finished: ${roomId}`);
       res.status(400).json({
         error: 'Game already finished',
         message: 'This game has ended. Please create a new room from the lobby to start a fresh game.'

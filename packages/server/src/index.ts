@@ -50,6 +50,7 @@ app.get('/api/rooms', (_req, res) => {
 app.post('/api/rooms', (req, res) => {
   const { name } = req.body;
   const room = roomManager.createRoom(name || 'Unnamed Arena');
+  console.log(`[API] Room created: ${room.id} (${room.name})`);
   res.json({
     id: room.id,
     name: room.name,

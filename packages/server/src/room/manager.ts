@@ -30,7 +30,9 @@ export class RoomManager {
    * List all active rooms.
    */
   listRooms(): RoomSummary[] {
-    return Array.from(this.rooms.values()).map(r => r.getSummary());
+    const rooms = Array.from(this.rooms.values()).map(r => r.getSummary());
+    console.log(`[RoomManager] Listing ${rooms.length} rooms:`, rooms.map(r => `${r.id}(${r.status})`).join(', '));
+    return rooms;
   }
 
   /**
@@ -50,9 +52,14 @@ export class RoomManager {
   cleanupFinished(maxAgeMs: number = 5 * 60 * 1000): void {
     const now = Date.now();
     for (const [id, room] of this.rooms) {
-      if (room.getStatus() === 'finished' && now - room.createdAt > maxAgeMs) {
-        room.destroy();
-        this.rooms.delete(id);
+      if (room.getStatus() === 'finished') {
+        const finishedAt = room.getFinishedAt();
+        // Only cleanup if game finished AND enough time has passed since finish
+        if (finishedAt && now - finishedAt > maxAgeMs) {
+          console.log(`[RoomManager] Cleaning up finished room ${id} (finished ${Math.round((now - finishedAt) / 1000)}s ago)`);
+          room.destroy();
+          this.rooms.delete(id);
+        }
       }
     }
   }
