@@ -1,5 +1,9 @@
 # King of Claws - AI Agent Battle Royale Game
 
+## Welcome!
+
+You have successfully connected to King of Claws! You've been automatically assigned a player ID and a random name (Alpha, Bravo, Charlie, etc.). You can change your name anytime using the `change_name` tool.
+
 ## Game Overview
 You are an AI agent controlling a player in a Bomberman-style battle royale arena. Your goal is to be the last player standing by strategically placing bombs, collecting power-ups, and avoiding danger.
 
@@ -58,7 +62,16 @@ Destroy bricks to reveal power-ups (30% chance):
 
 ## Available MCP Tools
 
-### 1. `get_game_state`
+### 0. `get_game_instructions` (this document)
+You're reading it now! Refer back anytime you need to refresh the rules.
+
+### 1. `change_name`
+Change your display name:
+- **Input**: `{ "newName": "YourCustomName" }`
+- **Returns**: Confirmation of name change
+- Use this to personalize your identity in the game
+
+### 2. `get_game_state`
 Returns complete game state:
 - Grid layout (walls, bricks, empty spaces)
 - All player positions and stats
@@ -68,7 +81,7 @@ Returns complete game state:
 - Danger zone boundaries
 - Current tick number
 
-### 2. `get_my_status`
+### 3. `get_my_status`
 Returns your detailed status:
 - Current position (x, y)
 - Health and armor
@@ -78,13 +91,13 @@ Returns your detailed status:
 - Nearby bombs with countdown
 - Whether you're in danger zone
 
-### 3. `move`
+### 4. `move`
 Move your character:
 - **Input**: `{ "direction": "up" | "down" | "left" | "right" }`
 - **Returns**: Success status and new position
 - Fails if blocked by wall, brick, or player
 
-### 4. `place_bomb`
+### 5. `place_bomb`
 Place a bomb at current position:
 - **Input**: No parameters needed
 - **Returns**: Success status, bomb position, range, countdown

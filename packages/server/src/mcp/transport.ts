@@ -20,15 +20,14 @@ const sessions = new Map<string, PlayerSession>();
  * Register MCP SSE routes on the Express app.
  *
  * Routes:
- *   GET  /mcp/:roomId/:playerName/sse     → Establish SSE connection
- *   POST /mcp/:roomId/:playerName/message  → Receive MCP messages
+ *   GET  /mcp/:roomId/sse              → Establish SSE connection (auto-assigns player)
+ *   POST /mcp/:roomId/:playerId/message → Receive MCP messages
  */
 export function registerMcpRoutes(app: Express, roomManager: RoomManager): void {
 
-  // SSE connection endpoint
-  app.get('/mcp/:roomId/:playerName/sse', async (req: Request, res: Response) => {
+  // SSE connection endpoint - auto-assigns player ID and name
+  app.get('/mcp/:roomId/sse', async (req: Request, res: Response) => {
     const roomId = req.params.roomId as string;
-    const playerName = req.params.playerName as string;
 
     const room = roomManager.getRoom(roomId);
     if (!room) {
@@ -41,23 +40,18 @@ export function registerMcpRoutes(app: Express, roomManager: RoomManager): void 
       return;
     }
 
-    // Use playerName as the player ID for simplicity in MVP
-    const playerId = playerName;
-    const sessionKey = `${roomId}:${playerId}`;
-
-    // Clean up existing session if reconnecting
-    const existing = sessions.get(sessionKey);
-    if (existing) {
-      try { await existing.mcpServer.close(); } catch {}
-      sessions.delete(sessionKey);
-    }
-
     // Check room capacity
     const engine = room.getEngine();
-    if (!engine.getPlayer(playerId) && engine.getPlayerCount() >= 4) {
+    if (engine.getPlayerCount() >= 4) {
       res.status(403).json({ error: 'Room is full (max 4 players)' });
       return;
     }
+
+    // Generate unique player ID and random name
+    const playerId = `player-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const randomNames = ['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot', 'Golf', 'Hotel'];
+    const playerName = randomNames[engine.getPlayerCount() % randomNames.length];
+    const sessionKey = `${roomId}:${playerId}`;
 
     // Add player to game
     const player = engine.addPlayer(playerId, playerName);
@@ -73,7 +67,7 @@ export function registerMcpRoutes(app: Express, roomManager: RoomManager): void 
     const mcpServer = createPlayerMcpServer(playerId, roomId, () => room.getEngine());
 
     // Create SSE transport — message endpoint path
-    const messageEndpoint = `/mcp/${roomId}/${playerName}/message`;
+    const messageEndpoint = `/mcp/${roomId}/${playerId}/message`;
     const transport = new SSEServerTransport(messageEndpoint, res);
 
     // Store session
@@ -91,10 +85,10 @@ export function registerMcpRoutes(app: Express, roomManager: RoomManager): void 
   });
 
   // MCP message endpoint (POST)
-  app.post('/mcp/:roomId/:playerName/message', async (req: Request, res: Response) => {
+  app.post('/mcp/:roomId/:playerId/message', async (req: Request, res: Response) => {
     const roomId = req.params.roomId as string;
-    const playerName = req.params.playerName as string;
-    const sessionKey = `${roomId}:${playerName}`;
+    const playerId = req.params.playerId as string;
+    const sessionKey = `${roomId}:${playerId}`;
 
     const session = sessions.get(sessionKey);
     if (!session) {

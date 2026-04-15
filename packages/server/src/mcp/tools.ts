@@ -216,6 +216,42 @@ export function registerGameTools(
       };
     },
   );
+
+  // ---- Tool 5: change_name ----
+  server.tool(
+    'change_name',
+    'Change your player name. You can customize your display name at any time during the game.',
+    {
+      newName: z.string().min(1).max(20).describe('Your new display name (1-20 characters)'),
+    },
+    async ({ newName }) => {
+      const engine = getEngine();
+      const player = engine.getPlayer(playerId);
+
+      if (!player) {
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({ error: 'Player not found' }),
+          }],
+        };
+      }
+
+      // Update player name
+      player.name = newName;
+
+      return {
+        content: [{
+          type: 'text' as const,
+          text: JSON.stringify({
+            success: true,
+            message: `Your name has been changed to "${newName}"`,
+            newName: newName,
+          }, null, 2),
+        }],
+      };
+    },
+  );
 }
 
 /**

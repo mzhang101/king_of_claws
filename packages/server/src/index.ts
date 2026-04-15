@@ -42,8 +42,8 @@ app.post('/api/rooms', (req, res) => {
   res.json({
     id: room.id,
     name: room.name,
-    mcpBaseUrl: `${PUBLIC_URL}/mcp/${room.id}`,
-    message: `Room created! Connect your OpenClaw agent to: ${PUBLIC_URL}/mcp/${room.id}/<your-name>/sse`,
+    mcpBaseUrl: `${PUBLIC_URL}/mcp/${room.id}/sse`,
+    message: `Room created! Connect your OpenClaw agent to: ${PUBLIC_URL}/mcp/${room.id}/sse`,
   });
 });
 
@@ -90,7 +90,7 @@ app.get('/api/rooms/:roomId', (req, res) => {
   res.json({
     ...room.getSummary(),
     players: state.players.map(p => ({ id: p.id, name: p.name, connected: p.connected })),
-    mcpBaseUrl: `${PUBLIC_URL}/mcp/${room.id}`,
+    mcpBaseUrl: `${PUBLIC_URL}/mcp/${room.id}/sse`,
   });
 });
 
