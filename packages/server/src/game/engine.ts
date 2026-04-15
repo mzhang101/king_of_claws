@@ -15,6 +15,7 @@ import type {
   TileType as TileTypeEnum,
   Position,
   AgentActionLog,
+  Airdrop,
 } from '@king-of-claws/shared';
 import {
   TileType,
@@ -40,6 +41,7 @@ export class GameEngine {
   private bombs: Bomb[] = [];
   private explosions: Explosion[] = [];
   private powerups: PowerUp[] = [];
+  private airdrops: Airdrop[] = [];
   private dangerZone!: DangerZone;
   private actionQueue: Map<string, PlayerAction> = new Map();
   private tickInterval: ReturnType<typeof setInterval> | null = null;
@@ -242,22 +244,25 @@ export class GameEngine {
       }
     }
 
-    // 6. Update danger zone
+    // 6. Process airdrops
+    this.processAirdrops();
+
+    // 7. Update danger zone
     this.updateZone();
 
-    // 6. Apply zone damage
+    // 8. Apply zone damage
     this.applyZoneDamage();
 
-    // 7. Check win condition
+    // 9. Check win condition
     this.checkWinCondition();
 
-    // 8. Broadcast state to spectators
+    // 10. Broadcast state to spectators
     this.broadcastState();
 
-    // 9. Clear action queue
+    // 11. Clear action queue
     this.actionQueue.clear();
 
-    // 10. Time limit check
+    // 12. Time limit check
     if (this.currentTick >= MAX_MATCH_DURATION_TICKS && this.status === 'playing') {
       this.endGameByTimeout();
     }
@@ -503,6 +508,7 @@ export class GameEngine {
       winner: this.winner,
       countdownRemaining: this.countdownRemaining,
       recentActions: this.recentActions,
+      airdrops: this.airdrops,
     };
   }
 
@@ -526,6 +532,57 @@ export class GameEngine {
    */
   canMoveToPosition(x: number, y: number): boolean {
     return canMoveTo(x, y, this.grid, this.bombs);
+  }
+
+  /**
+   * Add an airdrop to the game.
+   */
+  addAirdrop(airdrop: Airdrop): void {
+    this.airdrops.push(airdrop);
+  }
+
+  /**
+   * Process airdrops each tick.
+   */
+  private processAirdrops(): void {
+    for (let i = this.airdrops.length - 1; i >= 0; i--) {
+      const airdrop = this.airdrops[i];
+      airdrop.ticksRemaining--;
+
+      if (airdrop.ticksRemaining <= 0) {
+        // Airdrop lands - create power-up at target location
+        const { targetX, targetY, powerUpType } = airdrop;
+
+        // Check if position is valid (not a wall)
+        if (
+          targetX >= 0 &&
+          targetX < this.grid[0].length &&
+          targetY >= 0 &&
+          targetY < this.grid.length &&
+          this.grid[targetY][targetX] !== TileType.WALL
+        ) {
+          // Create visible power-up
+          const powerup: PowerUp = {
+            id: `airdrop-${Date.now()}-${Math.random()}`,
+            x: targetX,
+            y: targetY,
+            type: powerUpType,
+            visible: true,
+          };
+          this.powerups.push(powerup);
+
+          this.emitEvent({
+            event: 'airdrop_landed',
+            x: targetX,
+            y: targetY,
+            powerUpType,
+          });
+        }
+
+        // Remove airdrop from queue
+        this.airdrops.splice(i, 1);
+      }
+    }
   }
 
   // ---- Broadcasting ----

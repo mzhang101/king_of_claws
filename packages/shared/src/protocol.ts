@@ -32,4 +32,5 @@ export type GameEvent =
   | { event: 'player_eliminated'; playerId: string; playerName: string }
   | { event: 'powerup_collected'; playerId: string; powerupType: string; x: number; y: number }
   | { event: 'zone_shrinking'; phase: number; safeMinX: number; safeMaxX: number; safeMinY: number; safeMaxY: number }
-  | { event: 'brick_destroyed'; x: number; y: number };
+  | { event: 'brick_destroyed'; x: number; y: number }
+  | { event: 'airdrop_landed'; x: number; y: number; powerUpType: string };

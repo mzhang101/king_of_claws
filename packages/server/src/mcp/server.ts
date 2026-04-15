@@ -24,6 +24,7 @@ export function createPlayerMcpServer(
   const server = new McpServer({
     name: `king-of-claws-${roomId}`,
     version: '1.0.0',
+    instructions: gameInstructions,
   });
 
   // Add game instructions tool

@@ -7,10 +7,12 @@ import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { RoomManager } from '../room/manager.js';
 import { createPlayerMcpServer } from './server.js';
+import { createPlayerAccount } from '../player/account.js';
 
 interface PlayerSession {
   mcpServer: McpServer;
   transport: SSEServerTransport;
+  playerToken: string;
 }
 
 // Store active sessions: roomId:playerId → session
@@ -63,6 +65,10 @@ export function registerMcpRoutes(app: Express, roomManager: RoomManager): void 
     // Notify room of new player
     room.onPlayerConnected(playerId, playerName);
 
+    // Create player account and get token
+    const account = createPlayerAccount(playerId, roomId);
+    const playerToken = account.token;
+
     // Create per-player MCP server
     const mcpServer = createPlayerMcpServer(playerId, roomId, () => room.getEngine());
 
@@ -71,7 +77,12 @@ export function registerMcpRoutes(app: Express, roomManager: RoomManager): void 
     const transport = new SSEServerTransport(messageEndpoint, res);
 
     // Store session
-    sessions.set(sessionKey, { mcpServer, transport });
+    sessions.set(sessionKey, { mcpServer, transport, playerToken });
+
+    // Send player URL in SSE comment (visible to client)
+    const publicUrl = process.env.PUBLIC_URL || 'http://localhost:3001';
+    const playerUrl = `${publicUrl}/player/${playerToken}`;
+    res.write(`: Player URL: ${playerUrl}\n\n`);
 
     // Handle disconnect
     res.on('close', () => {

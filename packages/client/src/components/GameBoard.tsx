@@ -1,15 +1,15 @@
 // ============================================================
-// King of Claws — Game Board Component (Canvas + HUD)
+// King of Claws — Game Board Component (Retro-Geek Modernism)
 // ============================================================
 
 import { useEffect, useRef, useState } from 'react';
 import type { GameState } from '@king-of-claws/shared';
 import { CANVAS_WIDTH, CANVAS_HEIGHT } from '@king-of-claws/shared';
 import { GameRenderer } from '../renderer/canvas.js';
-import PlayerHUD from './PlayerHUD.js';
+import { useLanguage } from '../contexts/LanguageContext.js';
+import LanguageToggle from './LanguageToggle.js';
 import GameOverlay from './GameOverlay.js';
 
-// Use relative URLs — works with Vite proxy (dev) and Nginx reverse proxy (prod)
 const API_BASE = '';
 const WS_URL = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws`;
 
@@ -19,13 +19,14 @@ interface GameBoardProps {
 }
 
 export default function GameBoard({ roomId, onBack }: GameBoardProps) {
+  const { t } = useLanguage();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rendererRef = useRef<GameRenderer | null>(null);
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [connected, setConnected] = useState(false);
   const [mcpBaseUrl, setMcpBaseUrl] = useState<string>('');
 
-  // Fetch room details (including MCP URL) from server
+  // Fetch room details
   useEffect(() => {
     fetch(`${API_BASE}/api/rooms/${roomId}`)
       .then(res => res.json())
@@ -84,142 +85,211 @@ export default function GameBoard({ roomId, onBack }: GameBoardProps) {
     } catch {}
   };
 
-  // MCP URL from server (uses PUBLIC_URL env var when deployed)
   const mcpUrl = mcpBaseUrl || `${window.location.origin}/mcp/${roomId}`;
+  const playerCount = gameState?.players.length || 0;
 
   return (
-    <div className="min-h-screen flex flex-col bg-black">
-      {/* Top Bar */}
-      <div className="flex items-center justify-between px-6 py-3 bg-black border-b-2 border-cyan-500">
-        <button onClick={onBack} className="text-cyan-400 hover:text-pink-400 transition-colors text-sm font-mono">
-          &lt; BACK_TO_LOBBY
-        </button>
-        <div className="flex items-center gap-4">
-          <span className="text-purple-500 text-sm font-mono">ROOM: #{roomId.slice(0, 8)}</span>
-          <span className={`text-xs px-2 py-0.5 rounded font-mono border ${connected ? 'bg-green-900 text-green-400 border-green-500' : 'bg-red-900 text-red-400 border-red-500'}`}>
-            {connected ? '[ONLINE]' : '[OFFLINE]'}
-          </span>
-        </div>
-      </div>
+    <div className="min-h-screen bg-background text-on-background font-body flex flex-col">
+      {/* Top Bar - Full Width */}
+      <header className="bg-surface-container-low px-6 md:px-8 py-4 border-b border-surface-container-highest">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4 md:gap-6">
+            <button
+              onClick={onBack}
+              className="flex items-center gap-2 text-on-surface-variant hover:text-primary transition-colors step-easing font-label text-[10px] uppercase tracking-[0.15em]"
+            >
+              <span>←</span>
+              <span>{t.back}</span>
+            </button>
+            <span className="font-label text-[10px] text-on-surface-variant tracking-[0.3em]">
+              ROOM: #{roomId.slice(0, 8)}
+            </span>
+          </div>
 
-      {/* Main Content */}
-      <div className="flex-1 flex gap-0">
-        {/* Left: Game Canvas */}
-        <div className="flex-1 flex flex-col items-center justify-center bg-gradient-to-br from-gray-950 via-black to-purple-950 p-4 gap-4">
+          <div className="flex items-center gap-4 md:gap-6">
+            <div className={`font-label text-[10px] uppercase tracking-[0.15em] ${
+              connected ? 'text-primary' : 'text-error'
+            }`}>
+              {connected ? 'ONLINE' : 'OFFLINE'}
+            </div>
+            <LanguageToggle />
+          </div>
+        </div>
+      </header>
+
+      {/* Main Layout: Canvas + Sidebar */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Canvas Area - 70% */}
+        <div className="flex-1 flex items-center justify-center p-4 md:p-8 bg-surface-dim">
           <div className="relative">
             <canvas
               ref={canvasRef}
               width={CANVAS_WIDTH}
               height={CANVAS_HEIGHT}
-              className="rounded border-4 border-cyan-500 shadow-[0_0_30px_rgba(0,255,255,0.4)]"
+              className="border border-outline-variant/30"
+              style={{ borderRadius: 0 }}
             />
             {gameState && <GameOverlay state={gameState} />}
           </div>
+        </div>
 
-          {/* Agent Thoughts Display */}
-          {gameState && gameState.recentActions && gameState.recentActions.length > 0 && (
-            <div className="w-full max-w-3xl bg-black border-2 border-purple-600 rounded p-4 max-h-48 overflow-y-auto">
-              <h3 className="text-sm font-semibold text-cyan-400 uppercase tracking-wider mb-3 font-mono">&gt; AGENT_THOUGHTS</h3>
-              <div className="space-y-2">
-                {gameState.recentActions.slice().reverse().map((log, idx) => (
-                  <div key={`${log.tick}-${log.playerId}-${idx}`} className="border-l-2 border-purple-500 pl-3 py-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-cyan-400 font-mono text-xs">[T{log.tick}]</span>
-                      <span className="text-pink-400 font-mono text-xs font-bold">{log.playerName}</span>
-                      <span className="text-gray-500 font-mono text-xs">&gt; {log.action}</span>
+        {/* Sidebar - 30% */}
+        <aside className="w-80 md:w-96 bg-surface-container-low border-l border-surface-container-highest overflow-y-auto">
+          <div className="p-6 md:p-8 space-y-6 md:space-y-8">
+            {/* Game Info */}
+            <section className="space-y-4">
+              <h3 className="font-headline font-bold text-lg tracking-tight text-on-surface uppercase border-b border-outline-variant/20 pb-2">
+                {t.gameInfo}
+              </h3>
+              <dl className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <dt className="font-label text-[10px] text-on-surface-variant uppercase tracking-[0.15em]">
+                    {t.status}
+                  </dt>
+                  <dd className={`font-headline font-bold text-body-md uppercase tracking-wider ${
+                    gameState?.status === 'playing' ? 'text-primary' :
+                    gameState?.status === 'waiting' ? 'text-secondary' :
+                    'text-on-surface-variant'
+                  }`}>
+                    {gameState?.status || t.waiting}
+                  </dd>
+                </div>
+                <div className="flex justify-between items-center">
+                  <dt className="font-label text-[10px] text-on-surface-variant uppercase tracking-[0.15em]">
+                    {t.tick}
+                  </dt>
+                  <dd className="font-headline font-bold text-body-md text-on-surface">
+                    {gameState?.tick || 0}
+                  </dd>
+                </div>
+                <div className="flex justify-between items-center">
+                  <dt className="font-label text-[10px] text-on-surface-variant uppercase tracking-[0.15em]">
+                    {t.players}
+                  </dt>
+                  <dd className="font-headline font-bold text-body-md text-on-surface">
+                    {playerCount}/4
+                  </dd>
+                </div>
+              </dl>
+            </section>
+
+            {/* Players */}
+            {gameState && gameState.players.length > 0 && (
+              <section className="space-y-4">
+                <h3 className="font-headline font-bold text-lg tracking-tight text-on-surface uppercase border-b border-outline-variant/20 pb-2">
+                  {t.agents}
+                </h3>
+                <div className="space-y-3">
+                  {gameState.players.map((player) => (
+                    <div
+                      key={player.id}
+                      className={`bg-surface-container-highest p-4 border border-outline-variant/20 ${
+                        !player.alive && 'opacity-40'
+                      }`}
+                    >
+                      {/* Header */}
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="w-3 h-3"
+                            style={{ backgroundColor: player.color }}
+                          />
+                          <span className="font-headline font-bold text-body-md text-on-surface">
+                            {player.name}
+                          </span>
+                        </div>
+                        {!player.alive && (
+                          <span className="font-label text-[10px] text-error uppercase tracking-[0.15em]">
+                            {t.dead}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Health Bar */}
+                      {player.alive && (
+                        <div className="mb-3">
+                          <div className="h-1 bg-surface-container-low relative">
+                            <div
+                              className="h-full bg-primary transition-all duration-300"
+                              style={{ width: `${(player.health / 3) * 100}%` }}
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Stats */}
+                      {player.alive && (
+                        <div className="flex gap-4 font-label text-[10px] text-on-surface-variant uppercase tracking-[0.15em]">
+                          <span>B:{player.bombCount}</span>
+                          <span>R:{player.bombRange}</span>
+                          <span>S:{player.speed.toFixed(1)}</span>
+                          {player.armor > 0 && <span className="text-secondary">A:{player.armor}</span>}
+                        </div>
+                      )}
                     </div>
-                    {log.thought && (
-                      <p className="text-purple-300 text-xs font-mono leading-relaxed mb-1">
-                        💭 {log.thought}
-                      </p>
-                    )}
-                    {log.shout && (
-                      <p className="text-yellow-400 text-xs font-mono italic">
-                        💬 "{log.shout}"
-                      </p>
-                    )}
-                  </div>
-                ))}
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* MCP URL */}
+            <section className="bg-surface-container-highest p-4 border border-primary/10">
+              <h3 className="font-label text-[10px] text-on-surface-variant uppercase tracking-[0.15em] mb-2">
+                MCP URL
+              </h3>
+              <input
+                type="text"
+                value={mcpUrl}
+                readOnly
+                onClick={(e) => e.currentTarget.select()}
+                className="w-full bg-surface-container-low px-3 py-2 text-[10px] text-primary font-headline cursor-pointer border-b border-outline/30 focus:border-tertiary focus:outline-none"
+                style={{ borderRadius: 0 }}
+              />
+            </section>
+
+            {/* Controls */}
+            {gameState?.status === 'waiting' && (
+              <div className="space-y-3">
+                <button
+                  onClick={startGame}
+                  disabled={playerCount < 2}
+                  className="w-full px-6 py-4 bg-gradient-to-br from-primary to-primary-container text-on-primary font-headline font-bold text-body-md uppercase tracking-wider hover:shadow-[0_0_30px_rgba(142,255,113,0.3)] active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed transition-all step-easing"
+                  style={{ borderRadius: 0 }}
+                >
+                  {t.startGame}
+                </button>
+                <button
+                  onClick={addBot}
+                  className="w-full px-6 py-4 bg-surface-container-highest text-on-surface hover:text-primary border border-outline-variant/30 hover:border-primary/50 font-headline font-bold text-body-sm uppercase tracking-wider transition-all step-easing"
+                  style={{ borderRadius: 0 }}
+                >
+                  ADD BOT
+                </button>
               </div>
-            </div>
-          )}
-        </div>
-
-        {/* Right: Sidebar */}
-        <div className="w-72 bg-black border-l-2 border-purple-600 p-4 flex flex-col gap-6 overflow-y-auto">
-          {/* Game Info */}
-          <div className="border-2 border-cyan-500 rounded p-3 bg-gray-950">
-            <h3 className="text-sm font-semibold text-cyan-400 uppercase tracking-wider mb-3 font-mono">&gt; SYSTEM_INFO</h3>
-            <div className="space-y-1 text-sm font-mono">
-              <div className="flex justify-between text-purple-400">
-                <span>STATUS</span>
-                <span className={
-                  gameState?.status === 'playing' ? 'text-green-400' :
-                  gameState?.status === 'waiting' ? 'text-yellow-400' :
-                  gameState?.status === 'finished' ? 'text-gray-500' : 'text-orange-400'
-                }>
-                  [{gameState?.status?.toUpperCase() || '...'}]
-                </span>
-              </div>
-              {gameState?.status === 'playing' && (
-                <>
-                  <div className="flex justify-between text-purple-400">
-                    <span>TICK</span>
-                    <span className="text-cyan-400">{gameState.tick}</span>
-                  </div>
-                  <div className="flex justify-between text-purple-400">
-                    <span>TIME</span>
-                    <span className="text-cyan-400">{Math.floor(gameState.tick / 5)}s</span>
-                  </div>
-                  <div className="flex justify-between text-purple-400">
-                    <span>ZONE</span>
-                    <span className="text-red-400">PHASE_{gameState.dangerZone.phase}</span>
-                  </div>
-                </>
-              )}
-            </div>
+            )}
           </div>
-
-          {/* Players */}
-          {gameState && <PlayerHUD players={gameState.players} />}
-
-          {/* Controls */}
-          {gameState?.status === 'waiting' && (
-            <div className="space-y-2">
-              <button
-                onClick={addBot}
-                disabled={gameState.players.length >= 4}
-                className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 disabled:from-gray-800 disabled:to-gray-800 disabled:text-gray-600 text-white font-semibold py-2.5 rounded transition-all border-2 border-cyan-400 disabled:border-gray-700"
-                style={{ fontFamily: "'Press Start 2P', monospace", fontSize: '0.6rem' }}
-              >
-                {gameState.players.length >= 4 ? 'ROOM_FULL' : '+ ADD_BOT'}
-              </button>
-              <button
-                onClick={startGame}
-                disabled={gameState.players.length < 2}
-                className="w-full bg-gradient-to-r from-orange-600 to-pink-600 hover:from-orange-500 hover:to-pink-500 disabled:from-gray-800 disabled:to-gray-800 disabled:text-gray-600 text-white font-semibold py-2.5 rounded transition-all border-2 border-pink-400 disabled:border-gray-700"
-                style={{ fontFamily: "'Press Start 2P', monospace", fontSize: '0.6rem' }}
-              >
-                {gameState.players.length < 2 ? 'NEED_2+_AGENTS' : 'START_GAME'}
-              </button>
-            </div>
-          )}
-
-          {/* MCP Connection Info */}
-          <div className="border-2 border-purple-500 rounded p-3 bg-gray-950">
-            <h3 className="text-sm font-semibold text-cyan-400 uppercase tracking-wider mb-3 font-mono">&gt; CONNECT_AGENT</h3>
-            <p className="text-xs text-purple-400 mb-2 font-mono">
-              Configure OpenClaw MCP:
-            </p>
-            <div className="bg-black border border-green-500 rounded p-3 text-xs font-mono text-green-400 break-all select-all leading-relaxed">
-              {mcpUrl}
-            </div>
-            <p className="text-xs text-gray-600 mt-2 font-mono">
-              Auto-assigns player ID and name
-            </p>
-          </div>
-        </div>
+        </aside>
       </div>
+
+      {/* Agent Log - Bottom */}
+      {gameState && gameState.recentActions && gameState.recentActions.length > 0 && (
+        <section className="border-t border-surface-container-highest p-4 md:p-6 max-h-48 overflow-y-auto bg-surface-container-low">
+          <h3 className="font-headline font-bold text-lg tracking-tight text-on-surface uppercase mb-4">
+            AGENT_LOG
+          </h3>
+          <div className="space-y-2">
+            {gameState.recentActions.slice().reverse().map((log, idx) => (
+              <div key={`${log.tick}-${idx}`} className="flex gap-4 text-body-sm border-l-2 border-primary/30 pl-3 py-1">
+                <span className="text-on-surface-variant font-headline text-[10px]">[T{log.tick}]</span>
+                <span className="text-primary font-headline text-[10px]">{log.playerName}</span>
+                <span className="text-on-surface text-body-sm">{log.action}</span>
+                {log.thought && <span className="text-on-surface-variant text-body-sm italic">"{log.thought}"</span>}
+                {log.shout && <span className="text-secondary text-body-sm">💬 "{log.shout}"</span>}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }

@@ -1,0 +1,103 @@
+@import "tailwindcss";
+@theme {
+  /* ============================================================
+     King of Claws — Retro-Geek Modernism Design System
+     Based on "The Neon Monolith" aesthetic
+     ============================================================ */
+
+  /* Core Colors - Neon Emitters on Deep Space Black */
+  --color-primary: #8eff71;
+  --color-primary-dim: #2be800;
+  --color-primary-container: #2ff801;
+  --color-on-primary: #0d6100;
+
+  --color-secondary: #d575ff;
+  --color-secondary-dim: #b90afc;
+  --color-secondary-container: #9800d0;
+  --color-on-secondary: #390050;
+
+  --color-tertiary: #c1fffe;
+  --color-tertiary-dim: #00e6e6;
+  --color-tertiary-container: #00ffff;
+  --color-on-tertiary: #006767;
+
+  /* Surface Architecture - Tonal Layering */
+  --color-background: #0e0e0e;
+  --color-surface: #0e0e0e;
+  --color-surface-dim: #0e0e0e;
+  --color-surface-container-lowest: #000000;
+  --color-surface-container-low: #131313;
+  --color-surface-container: #1a1919;
+  --color-surface-container-high: #201f1f;
+  --color-surface-container-highest: #262626;
+  --color-surface-bright: #2c2c2c;
+  --color-surface-variant: #262626;
+
+  /* Text Colors */
+  --color-on-background: #ffffff;
+  --color-on-surface: #ffffff;
+  --color-on-surface-variant: #adaaaa;
+
+  /* Outline & Borders (Ghost Borders) */
+  --color-outline: #767575;
+  --color-outline-variant: #484847;
+
+  /* Error States */
+  --color-error: #ff7351;
+  --color-error-dim: #d53d18;
+  --color-error-container: #b92902;
+  --color-on-error: #450900;
+
+  /* Font Families */
+  --font-family-headline: 'Space Grotesk', 'Arial', sans-serif;
+  --font-family-body: 'Inter', 'Arial', sans-serif;
+  --font-family-label: 'Space Grotesk', 'Arial', sans-serif;
+
+  /* Typography Scale */
+  --font-size-display-lg: 3.5rem;
+  --font-size-display-md: 2.5rem;
+  --font-size-display-sm: 2rem;
+  --font-size-headline-lg: 2rem;
+  --font-size-headline-md: 1.5rem;
+  --font-size-headline-sm: 1.25rem;
+  --font-size-title-lg: 1.375rem;
+  --font-size-title-md: 1rem;
+  --font-size-title-sm: 0.875rem;
+  --font-size-body-lg: 1rem;
+  --font-size-body-md: 0.875rem;
+  --font-size-body-sm: 0.75rem;
+  --font-size-label-lg: 0.875rem;
+  --font-size-label-md: 0.75rem;
+  --font-size-label-sm: 0.6875rem;
+
+  /* Spacing Scale - 8px Grid */
+  --space-xs: 0.5rem;
+  --space-sm: 1rem;
+  --space-md: 1.5rem;
+  --space-lg: 4rem;
+  --space-xl: 8rem;
+
+  /* Border Radius - Sharp Corners Only */
+  --radius-none: 0px;
+
+  /* Animations - Step Easing */
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes pulse-glow {
+    0%, 100% {
+      box-shadow: 0 0 20px rgba(142, 255, 113, 0.3);
+    }
+    50% {
+      box-shadow: 0 0 40px rgba(142, 255, 113, 0.5);
+    }
+  }
+}

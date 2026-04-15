@@ -1,0 +1,354 @@
+// ============================================================
+// King of Claws — Player Personal Page (Retro-Geek Modernism)
+// ============================================================
+
+import { useEffect, useState, useRef } from 'react';
+import { useParams } from 'react-router-dom';
+import type { GameState } from '@king-of-claws/shared';
+import { CANVAS_WIDTH, CANVAS_HEIGHT } from '@king-of-claws/shared';
+import { GameRenderer } from '../renderer/canvas.js';
+import { useLanguage } from '../contexts/LanguageContext.js';
+import LanguageToggle from './LanguageToggle.js';
+import GameOverlay from './GameOverlay.js';
+
+const API_BASE = '';
+const WS_URL = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws`;
+
+interface PlayerInfo {
+  playerId: string;
+  credits: number;
+  agent: {
+    id: string;
+    name: string;
+    alive: boolean;
+    health: number;
+    x: number;
+    y: number;
+  };
+  room: {
+    id: string;
+    name: string;
+    status: string;
+  };
+  airdrop: {
+    cost: number;
+    onCooldown: boolean;
+    cooldownSeconds: number;
+  };
+}
+
+export default function PlayerPage() {
+  const { t } = useLanguage();
+  const { token } = useParams<{ token: string }>();
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const rendererRef = useRef<GameRenderer | null>(null);
+  const [playerInfo, setPlayerInfo] = useState<PlayerInfo | null>(null);
+  const [gameState, setGameState] = useState<GameState | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [airdropLoading, setAirdropLoading] = useState(false);
+  const [airdropMessage, setAirdropMessage] = useState<string | null>(null);
+
+  // Fetch player info
+  useEffect(() => {
+    if (!token) return;
+
+    const fetchPlayerInfo = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/player/${token}`);
+        if (!res.ok) {
+          setError('Player account not found');
+          return;
+        }
+        const data = await res.json();
+        setPlayerInfo(data);
+      } catch (err) {
+        setError('Failed to load player info');
+      }
+    };
+
+    fetchPlayerInfo();
+    const interval = setInterval(fetchPlayerInfo, 2000);
+    return () => clearInterval(interval);
+  }, [token]);
+
+  // WebSocket connection for game state
+  useEffect(() => {
+    if (!playerInfo) return;
+
+    const ws = new WebSocket(WS_URL);
+
+    ws.onopen = () => {
+      ws.send(JSON.stringify({ type: 'join_room', roomId: playerInfo.room.id }));
+    };
+
+    ws.onmessage = (ev) => {
+      try {
+        const msg = JSON.parse(ev.data);
+        if (msg.type === 'game_state') {
+          setGameState(msg.state);
+        }
+      } catch {}
+    };
+
+    return () => ws.close();
+  }, [playerInfo?.room.id]);
+
+  // Init canvas renderer
+  useEffect(() => {
+    if (canvasRef.current && !rendererRef.current) {
+      rendererRef.current = new GameRenderer(canvasRef.current);
+    }
+  }, []);
+
+  // Render on state change
+  useEffect(() => {
+    if (gameState && rendererRef.current) {
+      rendererRef.current.render(gameState);
+    }
+  }, [gameState]);
+
+  const callAirdrop = async () => {
+    if (!token || !playerInfo) return;
+
+    setAirdropLoading(true);
+    setAirdropMessage(null);
+
+    try {
+      const res = await fetch(`${API_BASE}/api/player/${token}/airdrop`, {
+        method: 'POST',
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setAirdropMessage(`❌ ${data.error}`);
+      } else {
+        setAirdropMessage(`✅ Airdrop called! Landing in 3 ticks...`);
+        // Refresh player info
+        const infoRes = await fetch(`${API_BASE}/api/player/${token}`);
+        if (infoRes.ok) {
+          setPlayerInfo(await infoRes.json());
+        }
+      }
+    } catch (err) {
+      setAirdropMessage('❌ Failed to call airdrop');
+    } finally {
+      setAirdropLoading(false);
+      setTimeout(() => setAirdropMessage(null), 5000);
+    }
+  };
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center border-4 border-error bg-surface-container-low p-12">
+          <p className="text-error text-2xl mb-4 font-headline font-bold uppercase">
+            {t.error}
+          </p>
+          <p className="text-on-surface-variant text-body-lg">
+            {error}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!playerInfo) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-primary text-2xl animate-pulse font-headline font-bold uppercase">
+          {t.loading}...
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen flex flex-col bg-background">
+      {/* Top Bar - Full Width */}
+      <header className="bg-surface-container-low px-6 md:px-8 py-4 border-b border-surface-container-highest">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4 md:gap-6">
+            <h1 className="font-headline font-black text-xl md:text-2xl tracking-tighter text-primary">
+              {playerInfo.agent.name}
+            </h1>
+            <span className={`px-2 py-1 border font-label text-[10px] uppercase tracking-[0.15em] ${
+              playerInfo.agent.alive
+                ? 'border-primary/30 text-primary bg-primary/10'
+                : 'border-error/30 text-error bg-error/10'
+            }`}>
+              {playerInfo.agent.alive ? t.alive : t.dead}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-4 md:gap-8">
+            {/* Credits Display - Large */}
+            <div className="flex items-center gap-3">
+              <span className="font-label text-[10px] text-on-surface-variant uppercase tracking-[0.15em]">
+                {t.credits}
+              </span>
+              <span className="font-headline font-black text-3xl md:text-4xl text-primary tracking-tighter">
+                {playerInfo.credits}
+              </span>
+            </div>
+
+            <LanguageToggle />
+          </div>
+        </div>
+      </header>
+
+      {/* Main Layout: Canvas + Control Panel */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Canvas Area - 70% */}
+        <div className="flex-1 flex items-center justify-center p-4 md:p-8 bg-surface-dim">
+          <div className="relative">
+            <canvas
+              ref={canvasRef}
+              width={CANVAS_WIDTH}
+              height={CANVAS_HEIGHT}
+              className="border border-outline-variant/30"
+              style={{ borderRadius: 0 }}
+            />
+            {gameState && <GameOverlay state={gameState} />}
+          </div>
+        </div>
+
+        {/* Control Panel - 30% */}
+        <aside className="w-80 md:w-96 bg-surface-container-low border-l border-surface-container-highest overflow-y-auto">
+          <div className="p-6 md:p-8 space-y-6 md:space-y-8">
+            {/* Agent Status */}
+            <section className="space-y-4">
+              <h3 className="font-headline font-bold text-lg tracking-tight text-on-surface uppercase border-b border-outline-variant/20 pb-2">
+                {t.agentStatus}
+              </h3>
+              <dl className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <dt className="font-label text-[10px] text-on-surface-variant uppercase tracking-[0.15em]">
+                    {t.health}
+                  </dt>
+                  <dd className={`font-headline font-bold text-body-md ${
+                    playerInfo.agent.health > 1 ? 'text-primary' : 'text-error'
+                  }`}>
+                    {playerInfo.agent.health}/3
+                  </dd>
+                </div>
+                <div className="flex justify-between items-center">
+                  <dt className="font-label text-[10px] text-on-surface-variant uppercase tracking-[0.15em]">
+                    {t.position}
+                  </dt>
+                  <dd className="font-headline font-bold text-body-md text-on-surface">
+                    ({playerInfo.agent.x}, {playerInfo.agent.y})
+                  </dd>
+                </div>
+              </dl>
+            </section>
+
+            {/* Airdrop Control */}
+            <section className="space-y-4">
+              <h3 className="font-headline font-bold text-lg tracking-tight text-on-surface uppercase border-b border-outline-variant/20 pb-2">
+                {t.airdrop}
+              </h3>
+
+              {/* Cost Info */}
+              <div className="bg-surface-container-highest p-4 border border-outline-variant/20">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="font-label text-[10px] text-on-surface-variant uppercase tracking-[0.15em]">
+                    {t.cost}
+                  </span>
+                  <span className="font-headline font-bold text-body-md text-on-surface">
+                    {playerInfo.airdrop.cost}
+                  </span>
+                </div>
+                {playerInfo.airdrop.onCooldown && (
+                  <div className="font-label text-[10px] text-secondary uppercase tracking-[0.15em]">
+                    {t.cooldown}: {playerInfo.airdrop.cooldownSeconds}s
+                  </div>
+                )}
+              </div>
+
+              {/* Airdrop Button */}
+              <button
+                onClick={callAirdrop}
+                disabled={
+                  airdropLoading ||
+                  !playerInfo.agent.alive ||
+                  playerInfo.room.status !== 'playing' ||
+                  playerInfo.credits < playerInfo.airdrop.cost ||
+                  playerInfo.airdrop.onCooldown
+                }
+                className="w-full px-6 py-4 bg-gradient-to-br from-primary to-primary-container text-on-primary font-headline font-bold text-body-md uppercase tracking-wider hover:shadow-[0_0_30px_rgba(142,255,113,0.3)] active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed transition-all step-easing"
+                style={{ borderRadius: 0 }}
+              >
+                {airdropLoading ? t.loading : t.callAirdrop}
+              </button>
+
+              {airdropMessage && (
+                <div className="text-center text-body-sm p-3 border border-primary/30 bg-primary/10 text-on-surface">
+                  {airdropMessage}
+                </div>
+              )}
+
+              <p className="text-body-sm text-on-surface-variant text-center">
+                Drops premium item at agent's current position after 3 ticks
+              </p>
+            </section>
+
+            {/* Room Info */}
+            <section className="bg-surface-container-highest p-4 border border-outline-variant/20">
+              <h3 className="font-label text-[10px] text-on-surface-variant uppercase tracking-[0.15em] mb-3">
+                {t.room}
+              </h3>
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-body-sm text-on-surface-variant">{t.name}</span>
+                  <span className="text-body-sm text-primary font-headline font-bold">
+                    {playerInfo.room.name}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-body-sm text-on-surface-variant">{t.status}</span>
+                  <span className={`text-body-sm font-headline font-bold uppercase ${
+                    playerInfo.room.status === 'playing' ? 'text-primary' :
+                    playerInfo.room.status === 'waiting' ? 'text-secondary' :
+                    'text-on-surface-variant'
+                  }`}>
+                    {playerInfo.room.status}
+                  </span>
+                </div>
+              </div>
+            </section>
+          </div>
+        </aside>
+      </div>
+
+      {/* Agent Thoughts - Bottom */}
+      {gameState && gameState.recentActions && gameState.recentActions.length > 0 && (
+        <section className="border-t border-surface-container-highest p-4 md:p-6 max-h-48 overflow-y-auto bg-surface-container-low">
+          <h3 className="font-headline font-bold text-lg tracking-tight text-on-surface uppercase mb-4">
+            AGENT_THOUGHTS
+          </h3>
+          <div className="space-y-2">
+            {gameState.recentActions.slice().reverse().filter(log => log.playerId === playerInfo.agent.id).map((log, idx) => (
+              <div key={`${log.tick}-${idx}`} className="border-l-2 border-primary/30 pl-3 py-1 space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-on-surface-variant font-headline text-[10px]">[T{log.tick}]</span>
+                  <span className="text-on-surface text-body-sm">{log.action}</span>
+                </div>
+                {log.thought && (
+                  <p className="text-primary text-body-sm leading-relaxed">
+                    💭 {log.thought}
+                  </p>
+                )}
+                {log.shout && (
+                  <p className="text-secondary text-body-sm italic">
+                    💬 "{log.shout}"
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+    </div>
+  );
+}

@@ -1,1 +1,98 @@
 @import "tailwindcss";
+@import "./theme.css";
+
+/* ============================================================
+   King of Claws — Retro-Geek Modernism
+   ============================================================ */
+
+/* Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+
+/* ============================================================
+   Base Styles
+   ============================================================ */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background-color: #0e0e0e;
+  background-image:
+    linear-gradient(rgba(142, 255, 113, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(142, 255, 113, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  color: #ffffff;
+  font-family: 'Inter', 'Arial', sans-serif;
+  overflow-x: hidden;
+}
+
+/* ============================================================
+   Custom Scrollbar
+   ============================================================ */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #000000;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #8eff71;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #2be800;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #8eff71 #000000;
+}
+
+/* ============================================================
+   Selection Style
+   ============================================================ */
+::selection {
+  background: #8eff71;
+  color: #0d6100;
+}
+
+::-moz-selection {
+  background: #8eff71;
+  color: #0d6100;
+}
+
+/* ============================================================
+   Focus Visible
+   ============================================================ */
+*:focus-visible {
+  outline: 2px solid #8eff71;
+  outline-offset: 2px;
+}
+
+/* ============================================================
+   Step Easing Utility
+   ============================================================ */
+.step-easing {
+  transition-timing-function: steps(4, end);
+}
+
+/* ============================================================
+   Scanline Overlay (Optional)
+   ============================================================ */
+.scanline-overlay {
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%),
+              linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+  background-size: 100% 2px, 3px 100%;
+  pointer-events: none;
+}

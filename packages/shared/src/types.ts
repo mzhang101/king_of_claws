@@ -134,6 +134,7 @@ export interface GameState {
   winner: string | null;
   countdownRemaining: number | null;
   recentActions: AgentActionLog[]; // Last 10 agent actions with thoughts
+  airdrops: Airdrop[]; // Active airdrops
 }
 
 // -- Room Summary (for lobby) --
@@ -160,4 +161,26 @@ export interface MatchStats {
     damageDealt: number;
     damageTaken: number;
   }>;
+}
+
+// -- Player Account --
+export interface PlayerAccount {
+  id: string;              // Player unique ID
+  token: string;           // Access token for player page
+  credits: number;         // Credit balance
+  agentId: string;         // Associated agent ID
+  roomId: string;          // Current room ID
+  createdAt: number;       // Timestamp
+  lastLogin: number;       // Last login timestamp
+  lastAirdropTick: number; // Last airdrop tick (for cooldown)
+}
+
+// -- Airdrop --
+export interface Airdrop {
+  id: string;
+  playerId: string;        // Player who called the airdrop
+  targetX: number;         // Target grid position
+  targetY: number;
+  ticksRemaining: number;  // Countdown to landing (3 ticks)
+  powerUpType: PowerUpType; // What will drop
 }

@@ -13,6 +13,15 @@ import { RoomManager } from './room/manager.js';
 import { registerMcpRoutes } from './mcp/transport.js';
 import { setupSpectatorWebSocket } from './ws/spectator.js';
 import { spawnBot } from './game/bot.js';
+import {
+  getAccountByToken,
+  updateLogin,
+  deductCredits,
+  updateLastAirdropTick,
+  getAccountByAgentId,
+} from './player/account.js';
+import { CREDITS } from './player/credits.js';
+import { createAirdrop, isAirdropOnCooldown, getAirdropCooldownSeconds } from './game/airdrop.js';
 
 const app = express();
 app.use(cors());
@@ -96,6 +105,140 @@ app.get('/api/rooms/:roomId', (req, res) => {
 
 // ---- MCP Routes ----
 registerMcpRoutes(app, roomManager);
+
+// ---- Player Account API ----
+
+// Get player account info
+app.get('/api/player/:token', (req, res) => {
+  const { token } = req.params;
+  const account = getAccountByToken(token);
+
+  if (!account) {
+    res.status(404).json({ error: 'Player account not found' });
+    return;
+  }
+
+  // Update login and give daily bonus
+  updateLogin(token);
+
+  // Get current room and agent status
+  const room = roomManager.getRoom(account.roomId);
+  if (!room) {
+    res.status(404).json({ error: 'Room not found' });
+    return;
+  }
+
+  const engine = room.getEngine();
+  const agent = engine.getPlayer(account.agentId);
+
+  if (!agent) {
+    res.status(404).json({ error: 'Agent not found in game' });
+    return;
+  }
+
+  // Calculate airdrop cooldown
+  const currentTick = engine.getCurrentTick();
+  const onCooldown = isAirdropOnCooldown(account.lastAirdropTick, currentTick);
+  const cooldownSeconds = onCooldown ? getAirdropCooldownSeconds(account.lastAirdropTick, currentTick) : 0;
+
+  res.json({
+    playerId: account.id,
+    credits: account.credits,
+    agent: {
+      id: agent.id,
+      name: agent.name,
+      alive: agent.alive,
+      health: agent.health,
+      x: agent.x,
+      y: agent.y,
+    },
+    room: {
+      id: room.id,
+      name: room.name,
+      status: room.getStatus(),
+    },
+    airdrop: {
+      cost: CREDITS.AIRDROP_COST,
+      onCooldown,
+      cooldownSeconds,
+    },
+  });
+});
+
+// Request airdrop
+app.post('/api/player/:token/airdrop', (req, res) => {
+  const { token } = req.params;
+  const account = getAccountByToken(token);
+
+  if (!account) {
+    res.status(404).json({ error: 'Player account not found' });
+    return;
+  }
+
+  const room = roomManager.getRoom(account.roomId);
+  if (!room) {
+    res.status(404).json({ error: 'Room not found' });
+    return;
+  }
+
+  const engine = room.getEngine();
+  const agent = engine.getPlayer(account.agentId);
+
+  if (!agent) {
+    res.status(404).json({ error: 'Agent not found in game' });
+    return;
+  }
+
+  // Validate game state
+  if (engine.getStatus() !== 'playing') {
+    res.status(400).json({ error: 'Game is not active' });
+    return;
+  }
+
+  if (!agent.alive) {
+    res.status(400).json({ error: 'Agent is not alive' });
+    return;
+  }
+
+  // Check credits
+  if (account.credits < CREDITS.AIRDROP_COST) {
+    res.status(400).json({ error: 'Insufficient credits', required: CREDITS.AIRDROP_COST, current: account.credits });
+    return;
+  }
+
+  // Check cooldown
+  const currentTick = engine.getCurrentTick();
+  if (isAirdropOnCooldown(account.lastAirdropTick, currentTick)) {
+    const cooldownSeconds = getAirdropCooldownSeconds(account.lastAirdropTick, currentTick);
+    res.status(400).json({ error: 'Airdrop on cooldown', cooldownSeconds });
+    return;
+  }
+
+  // Deduct credits
+  if (!deductCredits(token, CREDITS.AIRDROP_COST)) {
+    res.status(500).json({ error: 'Failed to deduct credits' });
+    return;
+  }
+
+  // Create airdrop
+  const airdrop = createAirdrop(account.id, agent);
+  engine.addAirdrop(airdrop);
+
+  // Update last airdrop tick
+  updateLastAirdropTick(token, currentTick);
+
+  res.json({
+    success: true,
+    message: 'Airdrop called! Landing in 3 ticks...',
+    airdrop: {
+      targetX: airdrop.targetX,
+      targetY: airdrop.targetY,
+      ticksRemaining: airdrop.ticksRemaining,
+      powerUpType: airdrop.powerUpType,
+    },
+    creditsRemaining: account.credits - CREDITS.AIRDROP_COST,
+  });
+});
 
 // ---- Static Files (production) ----
 // In production, serve the built React frontend from the same server
