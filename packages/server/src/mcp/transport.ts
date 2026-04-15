@@ -27,7 +27,8 @@ export function registerMcpRoutes(app: Express, roomManager: RoomManager): void 
 
   // SSE connection endpoint
   app.get('/mcp/:roomId/:playerName/sse', async (req: Request, res: Response) => {
-    const { roomId, playerName } = req.params;
+    const roomId = req.params.roomId as string;
+    const playerName = req.params.playerName as string;
 
     const room = roomManager.getRoom(roomId);
     if (!room) {
@@ -91,7 +92,8 @@ export function registerMcpRoutes(app: Express, roomManager: RoomManager): void 
 
   // MCP message endpoint (POST)
   app.post('/mcp/:roomId/:playerName/message', async (req: Request, res: Response) => {
-    const { roomId, playerName } = req.params;
+    const roomId = req.params.roomId as string;
+    const playerName = req.params.playerName as string;
     const sessionKey = `${roomId}:${playerName}`;
 
     const session = sessions.get(sessionKey);

@@ -165,10 +165,8 @@ export class GameEngine {
     this.status = 'waiting';
     this.winner = null;
     this.recentActions = []; // Clear action logs on reset
-    this.broadcastState();
-  }
 
-  // Re-create players at spawn positions
+    // Re-create players at spawn positions
     const existingPlayers = Array.from(this.players.values());
     this.players.clear();
     for (const p of existingPlayers) {
@@ -176,6 +174,8 @@ export class GameEngine {
         this.addPlayer(p.id, p.name);
       }
     }
+
+    this.broadcastState();
   }
 
   // ---- Action Queue ----
