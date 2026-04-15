@@ -276,11 +276,14 @@ setInterval(() => {
 
 // ---- Start Server ----
 const HOST = process.env.HOST || '0.0.0.0';
+const SERVER_INSTANCE_ID = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
 httpServer.listen(SERVER_PORT, HOST, () => {
   console.log(`
   ╔══════════════════════════════════════════════╗
   ║          King of Claws  Server               ║
   ╠══════════════════════════════════════════════╣
+  ║  Instance:  ${SERVER_INSTANCE_ID}            ║
   ║  HTTP:      http://${HOST}:${SERVER_PORT}            ║
   ║  WebSocket: ws://${HOST}:${SERVER_PORT}/ws            ║
   ║  MCP:       ${PUBLIC_URL}/mcp/...     ║

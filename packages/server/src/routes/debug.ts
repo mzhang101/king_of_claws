@@ -5,13 +5,19 @@
 import type { Express } from 'express';
 import type { RoomManager } from '../room/manager.js';
 
+let serverStartTime = Date.now();
+let serverInstanceId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
 export function registerDebugRoutes(app: Express, roomManager: RoomManager): void {
 
   // Debug endpoint - check server status
   app.get('/debug/status', (_req, res) => {
     const rooms = roomManager.listRooms();
+    const uptime = Math.floor((Date.now() - serverStartTime) / 1000);
     res.json({
       status: 'ok',
+      instanceId: serverInstanceId,
+      uptime: `${uptime}s`,
       timestamp: new Date().toISOString(),
       publicUrl: process.env.PUBLIC_URL || 'not set',
       port: process.env.PORT || 3001,

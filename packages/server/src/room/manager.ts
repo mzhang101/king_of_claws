@@ -16,6 +16,7 @@ export class RoomManager {
     const id = uuid().slice(0, 8); // short ID for easy sharing
     const room = new Room(id, name);
     this.rooms.set(id, room);
+    console.log(`[RoomManager] Room created: ${id} (${name}). Total rooms: ${this.rooms.size}`);
     return room;
   }
 
@@ -41,8 +42,10 @@ export class RoomManager {
   deleteRoom(id: string): boolean {
     const room = this.rooms.get(id);
     if (!room) return false;
+    console.log(`[RoomManager] Deleting room: ${id}. Total rooms before: ${this.rooms.size}`);
     room.destroy();
     this.rooms.delete(id);
+    console.log(`[RoomManager] Room deleted: ${id}. Total rooms after: ${this.rooms.size}`);
     return true;
   }
 
