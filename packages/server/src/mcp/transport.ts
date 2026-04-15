@@ -95,11 +95,6 @@ export function registerMcpRoutes(app: Express, roomManager: RoomManager): void 
 
     console.log(`[MCP] SSE session established: ${sessionKey}`);
 
-    // Send player URL in SSE comment (visible to client)
-    const publicUrl = process.env.PUBLIC_URL || 'http://localhost:3001';
-    const playerUrl = `${publicUrl}/player/${playerToken}`;
-    res.write(`: Player URL: ${playerUrl}\n\n`);
-
     // Handle disconnect
     res.on('close', () => {
       console.log(`[MCP] SSE connection closed: ${sessionKey}`);
@@ -108,8 +103,13 @@ export function registerMcpRoutes(app: Express, roomManager: RoomManager): void 
       room.onPlayerDisconnected(playerId);
     });
 
-    // Connect MCP server to transport
+    // Connect MCP server to transport FIRST
     await mcpServer.connect(transport);
+
+    // Send player URL in SSE comment AFTER connection is established
+    const publicUrl = process.env.PUBLIC_URL || 'http://localhost:3001';
+    const playerUrl = `${publicUrl}/player/${playerToken}`;
+    res.write(`: Player URL: ${playerUrl}\n\n`);
   });
 
   // MCP message endpoint (POST)
