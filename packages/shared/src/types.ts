@@ -135,8 +135,6 @@ export interface GameState {
   countdownRemaining: number | null;
   recentActions: AgentActionLog[]; // Last 10 agent actions with thoughts
 }
-  countdownRemaining: number | null;
-}
 
 // -- Room Summary (for lobby) --
 export interface RoomSummary {
