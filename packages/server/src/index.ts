@@ -12,7 +12,7 @@ import { SERVER_PORT, PUBLIC_URL } from '@king-of-claws/shared';
 import { RoomManager } from './room/manager.js';
 import { registerMcpRoutes } from './mcp/transport.js';
 import { registerDebugRoutes } from './routes/debug.js';
-import { setupSpectatorWebSocket } from './ws/spectator.js';
+import { setupSpectatorWebSocket, broadcastRoomListUpdate } from './ws/spectator.js';
 import { spawnBot } from './game/bot.js';
 import {
   getAccountByToken,
@@ -32,6 +32,11 @@ const httpServer = createServer(app);
 
 // ---- Core Services ----
 const roomManager = new RoomManager();
+
+// Set up room list change callback
+roomManager.setOnRoomListChange(() => {
+  broadcastRoomListUpdate(roomManager);
+});
 
 // ---- REST API ----
 

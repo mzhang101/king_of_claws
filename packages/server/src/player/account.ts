@@ -3,8 +3,8 @@
 // ============================================================
 
 import { randomBytes } from 'crypto';
-import { writeFileSync, readFileSync, existsSync } from 'fs';
-import { join } from 'path';
+import { writeFileSync, readFileSync, existsSync, mkdirSync } from 'fs';
+import { join, dirname } from 'path';
 import type { PlayerAccount } from '@king-of-claws/shared';
 
 const ACCOUNTS_FILE = join(process.cwd(), 'data', 'player-accounts.json');
@@ -32,6 +32,10 @@ export function loadAccounts() {
 // Save accounts to disk
 export function saveAccounts() {
   try {
+    const dir = dirname(ACCOUNTS_FILE);
+    if (!existsSync(dir)) {
+      mkdirSync(dir, { recursive: true });
+    }
     const data = Array.from(accounts.values());
     writeFileSync(ACCOUNTS_FILE, JSON.stringify(data, null, 2));
   } catch (err) {

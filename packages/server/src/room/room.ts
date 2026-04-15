@@ -15,6 +15,7 @@ export class Room {
   private engine: GameEngine;
   private spectators: Set<WebSocket> = new Set();
   private playerNames: Map<string, string> = new Map(); // id → name
+  private onRoomStateChange?: () => void;
 
   constructor(id: string, name: string) {
     this.id = id;
@@ -69,6 +70,7 @@ export class Room {
       playerName,
       playerCount: this.engine.getPlayerCount(),
     });
+    this.onRoomStateChange?.(); // Notify room state changed
   }
 
   onPlayerDisconnected(playerId: string): void {
@@ -77,6 +79,7 @@ export class Room {
       playerId,
       playerCount: this.engine.getPlayerCount(),
     });
+    this.onRoomStateChange?.(); // Notify room state changed
   }
 
   // ---- Game Lifecycle ----
@@ -160,6 +163,10 @@ export class Room {
   }
 
   // ---- Cleanup ----
+
+  setOnRoomStateChange(callback: () => void): void {
+    this.onRoomStateChange = callback;
+  }
 
   destroy(): void {
     this.engine.stop();

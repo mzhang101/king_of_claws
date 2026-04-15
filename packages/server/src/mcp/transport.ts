@@ -108,6 +108,20 @@ export function registerMcpRoutes(app: Express, roomManager: RoomManager): void 
 
     // Connect MCP server to transport (this calls transport.start())
     await mcpServer.connect(transport);
+
+    // Send periodic keep-alive comments to prevent timeout
+    const keepAliveInterval = setInterval(() => {
+      try {
+        res.write(': keep-alive\n\n');
+      } catch (err) {
+        clearInterval(keepAliveInterval);
+      }
+    }, 15000); // Every 15 seconds
+
+    // Clear interval on disconnect
+    res.on('close', () => {
+      clearInterval(keepAliveInterval);
+    });
   });
 
   // MCP message endpoint (POST)

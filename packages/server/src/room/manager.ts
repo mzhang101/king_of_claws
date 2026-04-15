@@ -9,10 +9,18 @@ import { saveRooms, loadRooms } from './persistence.js';
 
 export class RoomManager {
   private rooms: Map<string, Room> = new Map();
+  private onRoomListChange?: () => void;
 
   constructor() {
     // Load persisted rooms on startup
     this.loadPersistedRooms();
+  }
+
+  /**
+   * Set callback for when room list changes
+   */
+  setOnRoomListChange(callback: () => void): void {
+    this.onRoomListChange = callback;
   }
 
   /**
@@ -51,9 +59,13 @@ export class RoomManager {
   createRoom(name: string): Room {
     const id = uuid().slice(0, 8); // short ID for easy sharing
     const room = new Room(id, name);
+    room.setOnRoomStateChange(() => {
+      this.onRoomListChange?.();
+    });
     this.rooms.set(id, room);
     console.log(`[RoomManager] Room created: ${id} (${name}). Total rooms: ${this.rooms.size}`);
     this.persistRooms();
+    this.onRoomListChange?.();
     return room;
   }
 
@@ -84,6 +96,7 @@ export class RoomManager {
     this.rooms.delete(id);
     console.log(`[RoomManager] Room deleted: ${id}. Total rooms after: ${this.rooms.size}`);
     this.persistRooms();
+    this.onRoomListChange?.();
     return true;
   }
 
@@ -107,6 +120,7 @@ export class RoomManager {
     }
     if (cleaned) {
       this.persistRooms();
+      this.onRoomListChange?.();
     }
   }
 }

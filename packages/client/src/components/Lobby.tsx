@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import type { RoomSummary } from '@king-of-claws/shared';
 import { useLanguage } from '../contexts/LanguageContext.js';
 import LanguageToggle from './LanguageToggle.js';
 
 const API_BASE = '';
+const WS_URL = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws`;
 
 interface LobbyProps {
   onJoinRoom: (roomId: string) => void;
@@ -15,6 +16,7 @@ export default function Lobby({ onJoinRoom }: LobbyProps) {
   const [showCreateRoom, setShowCreateRoom] = useState(false);
   const [newRoomName, setNewRoomName] = useState('');
   const [loading, setLoading] = useState(false);
+  const wsRef = useRef<WebSocket | null>(null);
 
   const fetchRooms = async () => {
     try {
@@ -26,9 +28,54 @@ export default function Lobby({ onJoinRoom }: LobbyProps) {
   };
 
   useEffect(() => {
+    // Initial fetch
     fetchRooms();
-    const interval = setInterval(fetchRooms, 3000);
-    return () => clearInterval(interval);
+
+    // Setup WebSocket for real-time updates
+    const ws = new WebSocket(WS_URL);
+    wsRef.current = ws;
+
+    ws.onopen = () => {
+      console.log('[Lobby] WebSocket connected');
+      // Request room list
+      ws.send(JSON.stringify({ type: 'list_rooms' }));
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const msg = JSON.parse(event.data);
+        if (msg.type === 'room_list') {
+          setRooms(msg.rooms.filter((r: RoomSummary) => r.status !== 'finished'));
+        } else if (msg.type === 'room_created') {
+          // Refresh room list when a room is created
+          fetchRooms();
+        }
+      } catch (err) {
+        console.error('[Lobby] WebSocket message error:', err);
+      }
+    };
+
+    ws.onerror = (err) => {
+      console.error('[Lobby] WebSocket error:', err);
+    };
+
+    ws.onclose = () => {
+      console.log('[Lobby] WebSocket disconnected');
+    };
+
+    // Fallback polling every 5 seconds (in case WebSocket fails)
+    const interval = setInterval(() => {
+      if (ws.readyState !== WebSocket.OPEN) {
+        fetchRooms();
+      } else {
+        ws.send(JSON.stringify({ type: 'list_rooms' }));
+      }
+    }, 5000);
+
+    return () => {
+      clearInterval(interval);
+      ws.close();
+    };
   }, []);
 
   const createRoom = async () => {

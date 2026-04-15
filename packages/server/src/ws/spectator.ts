@@ -7,6 +7,25 @@ import type { Server as HTTPServer } from 'http';
 import type { RoomManager } from '../room/manager.js';
 import type { ClientMessage, ServerMessage } from '@king-of-claws/shared';
 
+// Track all lobby subscribers (clients viewing the lobby)
+const lobbySubscribers = new Set<WebSocket>();
+
+/**
+ * Broadcast room list update to all lobby subscribers
+ */
+export function broadcastRoomListUpdate(roomManager: RoomManager): void {
+  const rooms = roomManager.listRooms();
+  const message = JSON.stringify({ type: 'room_list', rooms });
+
+  for (const ws of lobbySubscribers) {
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.send(message);
+    } else {
+      lobbySubscribers.delete(ws);
+    }
+  }
+}
+
 /**
  * Set up WebSocket server for spectator connections.
  */
@@ -18,12 +37,18 @@ export function setupSpectatorWebSocket(
 
   wss.on('connection', (ws: WebSocket) => {
     let currentRoomId: string | null = null;
+    let isLobbySubscriber = false;
 
     ws.on('message', (data: Buffer) => {
       try {
         const msg: ClientMessage = JSON.parse(data.toString());
         handleMessage(ws, msg, roomManager, currentRoomId, (newRoomId) => {
           currentRoomId = newRoomId;
+        }, () => {
+          if (!isLobbySubscriber) {
+            lobbySubscribers.add(ws);
+            isLobbySubscriber = true;
+          }
         });
       } catch (err) {
         sendToClient(ws, { type: 'error', message: 'Invalid message format' });
@@ -34,6 +59,9 @@ export function setupSpectatorWebSocket(
       if (currentRoomId) {
         const room = roomManager.getRoom(currentRoomId);
         room?.removeSpectator(ws);
+      }
+      if (isLobbySubscriber) {
+        lobbySubscribers.delete(ws);
       }
     });
   });
@@ -47,9 +75,11 @@ function handleMessage(
   roomManager: RoomManager,
   currentRoomId: string | null,
   setRoomId: (id: string | null) => void,
+  subscribeLobby: () => void,
 ): void {
   switch (msg.type) {
     case 'list_rooms': {
+      subscribeLobby(); // Subscribe to lobby updates
       sendToClient(ws, {
         type: 'room_list',
         rooms: roomManager.listRooms(),
