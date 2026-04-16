@@ -10,6 +10,7 @@ import { randomUUID } from 'crypto';
 import type { RoomManager } from '../room/manager.js';
 import { createPlayerMcpServer } from './server.js';
 import { createPlayerAccount } from '../player/account.js';
+import { createLobbyMcpServer, type LobbyJoinedState } from './lobby-server.js';
 
 interface PlayerSession {
   mcpServer: McpServer;
@@ -31,6 +32,15 @@ const sessions = new Map<string, PlayerSession>();
 // Store active Streamable HTTP sessions: sessionId → session
 const streamableSessions = new Map<string, StreamableSession>();
 
+interface LobbySession {
+  mcpServer: McpServer;
+  transport: StreamableHTTPServerTransport;
+  state: LobbyJoinedState;
+}
+
+// Store active Lobby sessions (fixed /mcp endpoint): sessionId → session
+const lobbySessions = new Map<string, LobbySession>();
+
 /**
  * Register MCP SSE routes on the Express app.
  *
@@ -39,6 +49,85 @@ const streamableSessions = new Map<string, StreamableSession>();
  *   POST /mcp/:roomId/:playerId/message → Receive MCP messages
  */
 export function registerMcpRoutes(app: Express, roomManager: RoomManager): void {
+
+  // ================================================================
+  // Lobby endpoint: POST /mcp (no roomId)
+  // Agent connects here first, uses list_rooms / create_room / join_room.
+  // After join_room, game tools are injected into the same session.
+  // ================================================================
+  app.all('/mcp', async (req: Request, res: Response) => {
+    const sessionId = req.headers['mcp-session-id'] as string | undefined;
+
+    // --- Existing session lookup ---
+    if (sessionId && lobbySessions.has(sessionId)) {
+      const session = lobbySessions.get(sessionId)!;
+      await session.transport.handleRequest(req, res, req.body);
+      return;
+    }
+
+    // --- DELETE with unknown session → 404 ---
+    if (req.method === 'DELETE') {
+      res.status(404).json({ error: 'Session not found' });
+      return;
+    }
+
+    // --- GET with no session → 405 ---
+    if (req.method === 'GET') {
+      res.status(405).json({
+        error: 'Method not allowed. Send POST with initialize message first.',
+      });
+      return;
+    }
+
+    // --- Only POST allowed for new sessions ---
+    if (req.method !== 'POST') {
+      res.status(405).json({ error: 'Method not allowed' });
+      return;
+    }
+
+    // Stale sessionId → 404
+    if (sessionId) {
+      res.status(404).json({
+        error: 'Session expired or invalid. Reconnect without Mcp-Session-Id to start a new session.',
+      });
+      return;
+    }
+
+    // --- Create new lobby session ---
+    const state: LobbyJoinedState = {};
+    const mcpServer = createLobbyMcpServer(roomManager, state);
+
+    const transport = new StreamableHTTPServerTransport({
+      sessionIdGenerator: () => randomUUID(),
+    });
+
+    await mcpServer.connect(transport);
+    await transport.handleRequest(req, res, req.body);
+
+    const newSessionId = transport.sessionId;
+    if (!newSessionId) {
+      console.log('[MCP-Lobby] Failed to establish session');
+      return;
+    }
+
+    console.log(`[MCP-Lobby] Session established: ${newSessionId}`);
+
+    lobbySessions.set(newSessionId, { mcpServer, transport, state });
+
+    transport.onclose = () => {
+      console.log(`[MCP-Lobby] Session closed: ${newSessionId}`);
+      lobbySessions.delete(newSessionId);
+      // Clean up player if they joined a room
+      if (state.roomId && state.playerId) {
+        const room = roomManager.getRoom(state.roomId);
+        if (room) {
+          room.getEngine().removePlayer(state.playerId);
+          room.onPlayerDisconnected(state.playerId);
+          console.log(`[MCP-Lobby] Cleaned up player ${state.playerId} from room ${state.roomId}`);
+        }
+      }
+    };
+  });
 
   // SSE connection endpoint - auto-assigns player ID and name
   app.get('/mcp/:roomId/sse', async (req: Request, res: Response) => {
@@ -313,6 +402,13 @@ export async function closeRoomSessions(roomId: string): Promise<void> {
     if (session.roomId === roomId) {
       try { await session.mcpServer.close(); } catch {}
       streamableSessions.delete(sid);
+    }
+  }
+  // Close Lobby sessions that joined this room
+  for (const [sid, session] of lobbySessions) {
+    if (session.state.roomId === roomId) {
+      try { await session.mcpServer.close(); } catch {}
+      lobbySessions.delete(sid);
     }
   }
 }

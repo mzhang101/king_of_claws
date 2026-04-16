@@ -6,7 +6,7 @@ import express from 'express';
 import cors from 'cors';
 import { createServer } from 'http';
 import { join, dirname } from 'path';
-import { existsSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { SERVER_PORT, PUBLIC_URL } from '@king-of-claws/shared';
 import { RoomManager } from './room/manager.js';
@@ -23,6 +23,9 @@ import {
 } from './player/account.js';
 import { CREDITS } from './player/credits.js';
 import { createAirdrop, isAirdropOnCooldown, getAirdropCooldownSeconds } from './game/airdrop.js';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const skillMdContent = readFileSync(join(__dirname, 'mcp/skill.md'), 'utf-8');
 
 const app = express();
 app.use(cors());
@@ -266,9 +269,14 @@ app.post('/api/player/:token/airdrop', (req, res) => {
   });
 });
 
+// ---- SKILL.md for OpenClaw / AI agent self-configuration ----
+app.get('/SKILL.md', (_req, res) => {
+  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+  res.send(skillMdContent);
+});
+
 // ---- Static Files (production) ----
 // In production, serve the built React frontend from the same server
-const __dirname = dirname(fileURLToPath(import.meta.url));
 const clientDistPath = join(__dirname, '../../client/dist');
 if (existsSync(clientDistPath)) {
   app.use(express.static(clientDistPath));

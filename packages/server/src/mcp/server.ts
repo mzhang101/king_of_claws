@@ -21,11 +21,15 @@ export function createPlayerMcpServer(
   roomId: string,
   getEngine: () => GameEngine,
 ): McpServer {
-  const server = new McpServer({
-    name: `king-of-claws-${roomId}`,
-    version: '1.0.0',
-    instructions: gameInstructions,
-  });
+  const server = new McpServer(
+    {
+      name: `king-of-claws-${roomId}`,
+      version: '1.0.0',
+    },
+    {
+      instructions: gameInstructions,
+    },
+  );
 
   // Add game instructions tool
   server.tool(
