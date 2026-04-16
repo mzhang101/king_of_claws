@@ -1,7 +1,7 @@
 // ============================================================
 // King of Claws — Test Bot (Simple MCP Client)
 // ============================================================
-// Usage: npx tsx scripts/test-bot.ts <roomId> <botName>
+// Usage: npx tsx scripts/test-bot.ts <roomId> [botName]
 // This bot connects to the game via MCP SSE, calls tools in a loop.
 
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
@@ -10,7 +10,7 @@ import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 const ROOM_ID = process.argv[2] || 'test';
 const BOT_NAME = process.argv[3] || 'RandomBot';
 const SERVER_BASE = process.env.SERVER_URL || 'http://localhost:3001';
-const SERVER_URL = `${SERVER_BASE}/mcp/${ROOM_ID}/${BOT_NAME}/sse`;
+const SERVER_URL = `${SERVER_BASE}/mcp/${ROOM_ID}/sse`;
 
 async function main() {
   console.log(`[${BOT_NAME}] Connecting to ${SERVER_URL}...`);

@@ -56,12 +56,14 @@ app.get('/api/rooms', (_req, res) => {
 app.post('/api/rooms', (req, res) => {
   const { name } = req.body;
   const room = roomManager.createRoom(name || 'Unnamed Arena');
+  const mcpSseUrl = `${PUBLIC_URL}/mcp/${room.id}/sse`;
   console.log(`[API] Room created: ${room.id} (${room.name})`);
   res.json({
     id: room.id,
     name: room.name,
-    mcpBaseUrl: `${PUBLIC_URL}/mcp/${room.id}/sse`,
-    message: `Room created! Connect your OpenClaw agent to: ${PUBLIC_URL}/mcp/${room.id}/sse`,
+    mcpBaseUrl: mcpSseUrl,
+    mcpSessionNote: 'Open one SSE connection first, then POST MCP messages to the endpoint event URL with sessionId.',
+    message: `Room created! Connect your OpenClaw agent to: ${mcpSseUrl}`,
   });
 });
 
@@ -105,9 +107,19 @@ app.get('/api/rooms/:roomId', (req, res) => {
     return;
   }
   const state = room.getEngine().getState();
+  const players = state.players.map(p => {
+    const account = getAccountByAgentId(p.id);
+    return {
+      id: p.id,
+      name: p.name,
+      connected: p.connected,
+      playerUrl: account ? `${PUBLIC_URL}/player/${account.token}` : null,
+    };
+  });
+
   res.json({
     ...room.getSummary(),
-    players: state.players.map(p => ({ id: p.id, name: p.name, connected: p.connected })),
+    players,
     mcpBaseUrl: `${PUBLIC_URL}/mcp/${room.id}/sse`,
   });
 });

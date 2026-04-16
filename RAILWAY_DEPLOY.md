@@ -55,7 +55,12 @@ Railway provides a free `.railway.app` subdomain. To use a custom domain:
 After deployment completes:
 - Frontend: `https://your-app.railway.app`
 - Health check: `https://your-app.railway.app/api/health`
-- MCP endpoint: `https://your-app.railway.app/mcp/<roomId>/<playerId>/sse`
+- MCP SSE endpoint: `https://your-app.railway.app/mcp/<roomId>/sse`
+
+MCP session flow:
+- Keep this SSE connection open.
+- Read the first SSE `endpoint` event, which returns a message URL like `/mcp/<roomId>/<playerId>/message?sessionId=...`.
+- Send all JSON-RPC POST calls to that exact message URL while the SSE stream is active.
 
 ### 6. Monitoring
 
