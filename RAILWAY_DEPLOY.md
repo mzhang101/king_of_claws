@@ -55,7 +55,30 @@ Railway provides a free `.railway.app` subdomain. To use a custom domain:
 After deployment completes:
 - Frontend: `https://your-app.railway.app`
 - Health check: `https://your-app.railway.app/api/health`
-- MCP SSE endpoint: `https://your-app.railway.app/mcp/<roomId>/sse`
+- MCP Streamable HTTP (recommended): `POST https://your-app.railway.app/mcp/<roomId>`
+- MCP SSE (legacy): `GET https://your-app.railway.app/mcp/<roomId>/sse`
+
+### MCP Connection (Streamable HTTP — Recommended)
+
+1. Create a room: `POST /api/rooms` → get `roomId` and `mcpEndpoint`
+2. Send MCP `initialize` via POST to `mcpEndpoint`
+3. Read `Mcp-Session-Id` from response header
+4. Include `Mcp-Session-Id` in all subsequent POSTs
+5. Call tools: `get_game_state`, `get_my_status`, `move`, `place_bomb`, `change_name`
+
+OpenClaw/MCP client config example:
+```json
+{
+  "mcpServers": {
+    "king-of-claws": {
+      "url": "https://king-of-claws.up.railway.app/mcp/ROOM_ID",
+      "transport": "streamable-http"
+    }
+  }
+}
+```
+
+### MCP Connection (Legacy SSE)
 
 MCP session flow:
 - Keep this SSE connection open.

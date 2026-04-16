@@ -1,1 +1,32 @@
-[]
+[
+  {
+    "id": "039a9646ce3c87229bc6a6179029b7ed",
+    "token": "7a7c3ae1855388aacdd7be4994b6199d93118b5ce79f4db6c59f26331c6d79ad",
+    "credits": 1000,
+    "agentId": "player-1776310205880-k8iisqt2f",
+    "roomId": "14f2e6d8",
+    "createdAt": 1776310205880,
+    "lastLogin": 1776310205880,
+    "lastAirdropTick": -999
+  },
+  {
+    "id": "e1ec37d2dd14632b8d2615f95c394ba7",
+    "token": "54837aab200c1a2e50bbe8570be52b3aacf1f59761896cc6a51d9e0f227662f1",
+    "credits": 1000,
+    "agentId": "player-1776310445420-mhwo7g6iw",
+    "roomId": "e0653881",
+    "createdAt": 1776310445421,
+    "lastLogin": 1776310445421,
+    "lastAirdropTick": -999
+  },
+  {
+    "id": "dc1f1e43f29687e0a936e1b1335cca89",
+    "token": "bdc5d3e0d3e9cb20d4e2d98b008611feb1641f54003e5deef9359ff118828075",
+    "credits": 1000,
+    "agentId": "player-1776310470584-xkb4a12yg",
+    "roomId": "35d211f1",
+    "createdAt": 1776310470584,
+    "lastLogin": 1776310470584,
+    "lastAirdropTick": -999
+  }
+]

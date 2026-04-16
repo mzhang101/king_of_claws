@@ -1,0 +1,26 @@
+[
+  {
+    "id": "14f2e6d8",
+    "name": "streamable-test",
+    "status": "waiting",
+    "createdAt": 1776310469046,
+    "finishedAt": null,
+    "playerCount": 0
+  },
+  {
+    "id": "e0653881",
+    "name": "streamable-e2e",
+    "status": "waiting",
+    "createdAt": 1776310469047,
+    "finishedAt": null,
+    "playerCount": 0
+  },
+  {
+    "id": "35d211f1",
+    "name": "streamable-e2e",
+    "status": "waiting",
+    "createdAt": 1776310470527,
+    "finishedAt": null,
+    "playerCount": 0
+  }
+]

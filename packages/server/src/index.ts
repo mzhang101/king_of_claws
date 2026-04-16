@@ -57,13 +57,15 @@ app.post('/api/rooms', (req, res) => {
   const { name } = req.body;
   const room = roomManager.createRoom(name || 'Unnamed Arena');
   const mcpSseUrl = `${PUBLIC_URL}/mcp/${room.id}/sse`;
+  const mcpHttpUrl = `${PUBLIC_URL}/mcp/${room.id}`;
   console.log(`[API] Room created: ${room.id} (${room.name})`);
   res.json({
     id: room.id,
     name: room.name,
     mcpBaseUrl: mcpSseUrl,
-    mcpSessionNote: 'Open one SSE connection first, then POST MCP messages to the endpoint event URL with sessionId.',
-    message: `Room created! Connect your OpenClaw agent to: ${mcpSseUrl}`,
+    mcpEndpoint: mcpHttpUrl,
+    mcpSessionNote: 'Recommended: POST MCP JSON-RPC messages to mcpEndpoint (Streamable HTTP). Legacy: connect via SSE at mcpBaseUrl.',
+    message: `Room created! Connect your AI agent MCP client to: ${mcpHttpUrl}`,
   });
 });
 
