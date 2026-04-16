@@ -280,6 +280,97 @@ app.post('/api/player/:token/airdrop', (req, res) => {
   });
 });
 
+// GET /api/player/:token/state — lightweight game state for script-based polling
+app.get('/api/player/:token/state', (req, res) => {
+  const { token } = req.params;
+  const account = getAccountByToken(token);
+
+  if (!account) {
+    res.status(404).json({ error: 'Player account not found' });
+    return;
+  }
+
+  const room = roomManager.getRoom(account.roomId);
+  if (!room) {
+    res.status(404).json({ error: 'Room not found' });
+    return;
+  }
+
+  const engine = room.getEngine();
+  const state = engine.getState();
+  const agent = engine.getPlayer(account.agentId);
+
+  if (!agent) {
+    res.json({ gameStatus: state.status, tick: state.tick, alive: false });
+    return;
+  }
+
+  const nearbyBombs = state.bombs
+    .filter(b => Math.abs(b.x - agent.x) + Math.abs(b.y - agent.y) <= 4)
+    .map(b => ({ x: b.x, y: b.y, ticksRemaining: b.ticksRemaining, range: b.range }));
+
+  res.json({
+    gameStatus: state.status,
+    tick: state.tick,
+    alive: agent.alive,
+    position: { x: agent.x, y: agent.y },
+    health: agent.health,
+    canPlaceBomb: agent.activeBombs < agent.bombCount,
+    inDangerZone: !engine.isPositionSafe(agent.x, agent.y),
+    availableMoves: {
+      up: engine.canMoveToPosition(agent.x, agent.y - 1),
+      down: engine.canMoveToPosition(agent.x, agent.y + 1),
+      left: engine.canMoveToPosition(agent.x - 1, agent.y),
+      right: engine.canMoveToPosition(agent.x + 1, agent.y),
+    },
+    nearbyBombs,
+  });
+});
+
+// POST /api/player/:token/action — submit a game action from a script
+app.post('/api/player/:token/action', (req, res) => {
+  const { token } = req.params;
+  const account = getAccountByToken(token);
+
+  if (!account) {
+    res.status(404).json({ error: 'Player account not found' });
+    return;
+  }
+
+  const room = roomManager.getRoom(account.roomId);
+  if (!room) {
+    res.status(404).json({ error: 'Room not found' });
+    return;
+  }
+
+  const engine = room.getEngine();
+
+  if (engine.getStatus() !== 'playing') {
+    res.json({ success: false, gameStatus: engine.getStatus(), message: 'Game is not active' });
+    return;
+  }
+
+  const { action, direction } = req.body as { action?: string; direction?: string };
+
+  if (action === 'move') {
+    const validDirs = ['up', 'down', 'left', 'right'];
+    if (!direction || !validDirs.includes(direction)) {
+      res.status(400).json({ error: 'Invalid direction. Use: up, down, left, right' });
+      return;
+    }
+    const result = engine.queueAction(account.agentId, {
+      type: 'move',
+      direction: direction as 'up' | 'down' | 'left' | 'right',
+    });
+    res.json({ success: result.accepted, message: result.message });
+  } else if (action === 'bomb') {
+    const result = engine.queueAction(account.agentId, { type: 'place_bomb' });
+    res.json({ success: result.accepted, message: result.message });
+  } else {
+    res.status(400).json({ error: 'Invalid action. Use "move" (with direction: up/down/left/right) or "bomb"' });
+  }
+});
+
 // ---- SKILL.md for OpenClaw / AI agent self-configuration ----
 app.get('/SKILL.md', (_req, res) => {
   res.setHeader('Content-Type', 'text/plain; charset=utf-8');

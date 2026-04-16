@@ -183,6 +183,7 @@ export function createLobbyMcpServer(
             roomName: room.name,
             gameStatus: room.getStatus(),
             playerUrl,
+            playerToken: account.token,
             message: `Joined room "${room.name}" as ${assignedName}! Game tools are now available. Use get_game_state or get_my_status to see the battlefield. Wait for the game to start (status: "playing") before moving or placing bombs.`,
           }, null, 2),
         }],
