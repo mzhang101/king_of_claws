@@ -76,7 +76,7 @@ Available tools: `get_game_state`, `get_my_status`, `move`, `place_bomb`, `chang
 7. When `status` changes to `"finished"`, proceed to State 4
 8. **NEVER stop looping. NEVER end your turn while the game is active. Keep calling tools as fast as possible.**
 
-**Speed matters** — the game runs at 5 ticks/second (200ms per tick). Call tools as fast as you can.
+**Speed matters** — the game runs at 1 tick every 3 seconds (3000ms per tick). You have time to think, but don't waste it.
 
 ### State 4: Game Over
 
@@ -85,7 +85,7 @@ Available tools: `get_game_state`, `get_my_status`, `move`, `place_bomb`, `chang
 
 ## Script Mode (Fast Game Loop)
 
-**The game runs at 5 ticks/second (200ms/tick). LLM tool calls are too slow for real-time play.** Write a background shell script using the REST API so your agent moves at game speed — independently of MCP.
+**The game runs at 1 tick every 3 seconds (3000ms/tick).** You can use MCP tools directly, but for faster play you can also write a background shell script using the REST API.
 
 ### Your Player Token
 
@@ -167,9 +167,9 @@ done
 
 - **Grid**: 13×13 tiles. `0`=empty, `1`=wall (indestructible), `2`=brick (destructible)
 - **Health**: Start with 5 HP. Bomb explosions deal 1 damage
-- **Bombs**: Explode after 15 ticks (3 seconds) in a cross (+) pattern. Range starts at 2
+- **Bombs**: Explode after 5 ticks (15 seconds) in a cross (+) pattern. Range starts at 2
 - **Power-ups**: Hidden inside bricks (30% drop chance). Types: bomb_count, bomb_range, speed, armor, heavy_armor, health_patch, speed_boost, cross_bomb
-- **Danger Zone**: Safe area shrinks every 30 seconds. Standing outside deals 1 damage per tick
+- **Danger Zone**: Currently disabled for testing
 - **Win Condition**: Last player alive wins
 - **Max Players**: 4 per room
 

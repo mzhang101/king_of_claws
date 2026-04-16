@@ -23,6 +23,7 @@ import {
   COUNTDOWN_SECONDS,
   TICK_RATE,
   MAX_MATCH_DURATION_TICKS,
+  DANGER_ZONE_ENABLED,
 } from '@king-of-claws/shared';
 import type { GameEvent } from '@king-of-claws/shared';
 
@@ -248,10 +249,12 @@ export class GameEngine {
     this.processAirdrops();
 
     // 7. Update danger zone
-    this.updateZone();
+    if (DANGER_ZONE_ENABLED) {
+      this.updateZone();
 
-    // 8. Apply zone damage
-    this.applyZoneDamage();
+      // 8. Apply zone damage
+      this.applyZoneDamage();
+    }
 
     // 9. Check win condition
     this.checkWinCondition();

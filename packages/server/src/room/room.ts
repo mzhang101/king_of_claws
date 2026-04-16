@@ -70,6 +70,8 @@ export class Room {
       playerName,
       playerCount: this.engine.getPlayerCount(),
     });
+    // Also broadcast full game_state so frontends update in real-time
+    this.broadcastToSpectators({ type: 'game_state', state: this.engine.getState() });
     this.onRoomStateChange?.(); // Notify room state changed
   }
 

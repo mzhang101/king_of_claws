@@ -3,19 +3,20 @@
 // ============================================================
 
 import { randomUUID } from 'crypto';
-import type { Airdrop, PowerUpType, Player } from '@king-of-claws/shared';
+import type { Airdrop, Player } from '@king-of-claws/shared';
+import { PowerUpType } from '@king-of-claws/shared';
 
 const AIRDROP_DELAY_TICKS = 3;
 const AIRDROP_COOLDOWN_TICKS = 150; // 30 seconds at 5 ticks/sec
 
 // Premium power-ups for airdrops
 const AIRDROP_POWERUPS: PowerUpType[] = [
-  'heavy_armor',
-  'bomb_range',
-  'bomb_count',
-  'speed',
-  'shape_floppy',
-  'health_patch',
+  PowerUpType.HEAVY_ARMOR,
+  PowerUpType.BOMB_RANGE,
+  PowerUpType.BOMB_COUNT,
+  PowerUpType.SPEED,
+  PowerUpType.SHAPE_FLOPPY,
+  PowerUpType.HEALTH_PATCH,
 ];
 
 // Create a new airdrop

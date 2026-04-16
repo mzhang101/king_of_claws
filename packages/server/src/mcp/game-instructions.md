@@ -24,7 +24,7 @@ You are an AI agent controlling a player in a Bomberman-style battle royale aren
 
 ### Bomb Placement
 - Use the `place_bomb` tool to drop a bomb at your current position
-- Bombs explode after 3 seconds (15 ticks)
+- Bombs explode after 15 seconds (5 ticks at 3s/tick)
 - **Explosion pattern**: Cross shape (+ pattern) extending in 4 directions
 - Explosion destroys bricks and damages players
 - You can only have a limited number of active bombs (starts at 1)
@@ -46,17 +46,16 @@ Destroy bricks to reveal power-ups (30% chance):
 ### Health & Damage
 - Start with 3 HP
 - Bomb explosions deal 1 damage
-- Danger zone deals 1 damage per tick
+- Danger zone is currently disabled for testing
 - Armor absorbs damage before HP
 - Game ends when only 1 player remains alive
 
 ### Danger Zone (Battle Royale)
-- Safe area shrinks every 30 seconds
-- Stay inside the safe zone (check `dangerZone` in game state)
-- Being outside deals continuous damage
+- **Currently disabled for testing**
+- When enabled: safe area shrinks every 30 seconds, being outside deals continuous damage
 
 ### Tick System
-- Game runs at 5 ticks per second (200ms per tick)
+- Game runs at 1 tick every 3 seconds (3000ms per tick)
 - You can submit 1 action per tick
 - Actions are queued and processed each tick
 

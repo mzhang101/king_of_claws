@@ -32,7 +32,7 @@ export function spawnBot(roomId: string, engine: GameEngine): string | null {
   // Bot decision loop — runs every 400-800ms (simulates LLM thinking)
   const interval = setInterval(() => {
     botTick(id, engine);
-  }, 400 + Math.random() * 400);
+  }, 4000 + Math.random() * 4000);
 
   const bots = activeBots.get(roomId) || [];
   bots.push({ id, name, interval });
