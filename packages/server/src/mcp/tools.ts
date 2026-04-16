@@ -6,6 +6,7 @@ import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { GameEngine } from '../game/engine.js';
 import { PLAYER_INITIAL_HEALTH } from '@king-of-claws/shared';
+import type { Direction } from '@king-of-claws/shared';
 
 /**
  * Register all game MCP tools on a McpServer instance for a specific player.
@@ -29,17 +30,21 @@ export function registerGameTools(
       // If already started or finished, return immediately
       if (currentStatus === 'playing' || currentStatus === 'finished') {
         const state = engine.getState();
+        const openingPlan = currentStatus === 'playing'
+          ? getOpeningActionPlan(engine, playerId)
+          : undefined;
         return {
           content: [{
             type: 'text' as const,
             text: JSON.stringify({
               status: currentStatus,
               message: currentStatus === 'playing'
-                ? 'Game has started! Begin your game loop NOW — call get_my_status, then move/place_bomb repeatedly.'
+                ? 'Game has started! Execute the opening sequence immediately: call get_my_status, then take the recommended first move without pausing.'
                 : 'Game is already finished.',
               tick: state.tick,
               playerCount: state.players.length,
               playersAlive: state.players.filter(p => p.alive).length,
+              openingPlan,
             }),
           }],
         };
@@ -70,13 +75,15 @@ export function registerGameTools(
       });
 
       if (result.status === 'playing') {
+        const openingPlan = getOpeningActionPlan(engine, playerId);
         return {
           content: [{
             type: 'text' as const,
             text: JSON.stringify({
               status: 'playing',
-              message: 'Game has started! Begin your game loop NOW — call get_my_status, then move/place_bomb repeatedly.',
+              message: 'Game has started! Execute the opening sequence immediately: call get_my_status, then take the recommended first move without pausing.',
               playerCount: result.playerCount,
+              openingPlan,
             }),
           }],
         };
@@ -365,4 +372,74 @@ function getBombDangerDirections(
   }
   if (bomb.x === player.x && bomb.y === player.y) dirs.push('at your position!');
   return dirs;
+}
+
+function getOpeningActionPlan(
+  engine: GameEngine,
+  playerId: string,
+): {
+  immediateSequence: Array<{ tool: string; args?: { direction: Direction }; purpose: string }>;
+  recommendedMove: Direction | null;
+  reason: string;
+} {
+  const player = engine.getPlayer(playerId);
+  if (!player) {
+    return {
+      immediateSequence: [
+        { tool: 'get_my_status', purpose: 'Re-sync your current position before taking any opening action.' },
+      ],
+      recommendedMove: null,
+      reason: 'Player not found in engine state; re-sync first.',
+    };
+  }
+
+  const availableMoves: Direction[] = [];
+  if (engine.canMoveToPosition(player.x, player.y - 1)) availableMoves.push('up');
+  if (engine.canMoveToPosition(player.x, player.y + 1)) availableMoves.push('down');
+  if (engine.canMoveToPosition(player.x - 1, player.y)) availableMoves.push('left');
+  if (engine.canMoveToPosition(player.x + 1, player.y)) availableMoves.push('right');
+
+  const preferredMoves = getPreferredOpeningDirections(player.x, player.y);
+  const recommendedMove = preferredMoves.find(direction => availableMoves.includes(direction)) ?? availableMoves[0] ?? null;
+
+  const immediateSequence: Array<{ tool: string; args?: { direction: Direction }; purpose: string }> = [
+    { tool: 'get_my_status', purpose: 'Read exact availableMoves and confirm you are alive at tick 1.' },
+  ];
+
+  if (recommendedMove) {
+    immediateSequence.push({
+      tool: 'move',
+      args: { direction: recommendedMove },
+      purpose: 'Take your first action immediately instead of idling after the match starts.',
+    });
+  }
+
+  return {
+    immediateSequence,
+    recommendedMove,
+    reason: recommendedMove
+      ? `Open by moving ${recommendedMove} to leave spawn and head toward the center lane.`
+      : 'No legal opening move detected; call get_game_state next and evaluate a bomb only if you have a safe escape route.',
+  };
+}
+
+function getPreferredOpeningDirections(x: number, y: number): Direction[] {
+  const centerX = 6;
+  const centerY = 6;
+
+  const horizontal = x < centerX ? 'right' : x > centerX ? 'left' : null;
+  const vertical = y < centerY ? 'down' : y > centerY ? 'up' : null;
+
+  const ordered: Direction[] = [];
+  if (horizontal && Math.abs(centerX - x) >= Math.abs(centerY - y)) ordered.push(horizontal);
+  if (vertical) ordered.push(vertical);
+  if (horizontal && !ordered.includes(horizontal)) ordered.push(horizontal);
+
+  for (const direction of ['up', 'down', 'left', 'right'] as Direction[]) {
+    if (!ordered.includes(direction)) {
+      ordered.push(direction);
+    }
+  }
+
+  return ordered;
 }

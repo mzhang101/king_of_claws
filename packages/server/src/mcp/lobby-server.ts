@@ -186,8 +186,8 @@ export function createLobbyMcpServer(
             gameStatus: room.getStatus(),
             playerUrl,
             playerToken: account.token,
-            nextAction: 'Call wait_for_game_start NOW, and keep calling it until status is "playing". Do not go idle.',
-            message: `Joined room "${room.name}" as ${assignedName}! Game tools are now available. IMPORTANT: call wait_for_game_start immediately in a loop until the game starts, then begin move/place_bomb actions each tick.`,
+            nextAction: 'Call wait_for_game_start NOW, and keep calling it until status is "playing". When it returns playing, immediately call get_my_status and then the recommended first move from openingPlan.',
+            message: `Joined room "${room.name}" as ${assignedName}! Game tools are now available. IMPORTANT: call wait_for_game_start immediately in a loop until the game starts. As soon as it returns playing, execute the opening sequence right away: get_my_status, then the recommended first move, then continue your normal loop.`,
           }, null, 2),
         }],
       };

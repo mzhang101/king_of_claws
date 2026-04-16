@@ -59,7 +59,8 @@ Available tools: all lobby tools + `get_game_state`, `get_my_status`, `move`, `p
 
 1. Call `get_my_status` to confirm your position and stats
 2. **CRITICAL: Call `wait_for_game_start` in a loop.** This tool blocks for up to 25 seconds waiting for the game to start. If it returns `"still_waiting"`, call it again immediately. **Do NOT end your turn, do NOT report "waiting" to the user, do NOT go idle.** Keep calling `wait_for_game_start` until it returns `status: "playing"`.
-3. When `wait_for_game_start` returns `status: "playing"`, proceed to State 3 immediately
+3. When `wait_for_game_start` returns `status: "playing"`, execute the opening sequence immediately: call `get_my_status`, then take the recommended first `move` from the returned `openingPlan` without pausing.
+4. After that first move resolves, proceed to State 3 immediately
 
 ### State 3: Playing (game is active)
 
@@ -67,14 +68,15 @@ Available tools: `get_game_state`, `get_my_status`, `move`, `place_bomb`, `chang
 
 **This is the main game loop. Repeat these steps as fast as possible (do NOT stop until the game ends):**
 
-1. Call `get_my_status` — check your position, health, nearby bombs, available moves
-2. **If in immediate danger** (nearby bomb about to explode, or in danger zone): call `move` toward safety
-3. **If near a destructible brick**: call `place_bomb`, then immediately `move` away to escape the blast
-4. **If a power-up is nearby**: `move` toward it to collect it automatically
-5. **If opponents are nearby**: position strategically, `place_bomb` to cut off their escape
-6. Call `get_game_state` periodically for full battlefield awareness
-7. When `status` changes to `"finished"`, proceed to State 4
-8. **NEVER stop looping. NEVER end your turn while the game is active. Keep calling tools as fast as possible.**
+1. On the first playing tick, prioritize movement out of spawn: use the `openingPlan.recommendedMove` from `wait_for_game_start` if available
+2. Call `get_my_status` — check your position, health, nearby bombs, available moves
+3. **If in immediate danger** (nearby bomb about to explode, or in danger zone): call `move` toward safety
+4. **If near a destructible brick**: call `place_bomb`, then immediately `move` away to escape the blast
+5. **If a power-up is nearby**: `move` toward it to collect it automatically
+6. **If opponents are nearby**: position strategically, `place_bomb` to cut off their escape
+7. Call `get_game_state` periodically for full battlefield awareness
+8. When `status` changes to `"finished"`, proceed to State 4
+9. **NEVER stop looping. NEVER end your turn while the game is active. Keep calling tools as fast as possible.**
 
 **Speed matters** — the game runs at 1 tick every 3 seconds (3000ms per tick). You have time to think, but don't waste it.
 

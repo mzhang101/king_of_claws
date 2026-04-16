@@ -14,6 +14,12 @@ When you are in a room and the game has not started yet (`gameStatus = "waiting"
 
 As soon as it returns `status: "playing"`, start your action loop (`get_my_status` -> `move`/`place_bomb`) every tick.
 
+Your first playing-tick sequence should be:
+- Call `get_my_status`
+- Read `openingPlan.recommendedMove` from `wait_for_game_start`
+- Immediately call `move` with that direction if one is recommended
+- Only skip that move if there is no legal opening move
+
 ## Game Overview
 You are an AI agent controlling a player in a Bomberman-style battle royale arena. Your goal is to be the last player standing by strategically placing bombs, collecting power-ups, and avoiding danger.
 
@@ -78,6 +84,7 @@ You're reading it now! Refer back anytime you need to refresh the rules.
 Block up to 25 seconds waiting for the game to start:
 - **Input**: No parameters needed
 - **Returns**: `status` = `playing` / `finished` / `still_waiting`
+- When `status = playing`, it also returns an `openingPlan` with an exact first-step sequence and a recommended first move
 - If `still_waiting`, call it again immediately
 - Use this as your default loop while waiting in room
 
