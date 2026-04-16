@@ -5,6 +5,7 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { GameEngine } from '../game/engine.js';
+import { PLAYER_INITIAL_HEALTH } from '@king-of-claws/shared';
 
 /**
  * Register all game MCP tools on a McpServer instance for a specific player.
@@ -15,6 +16,98 @@ export function registerGameTools(
   playerId: string,
   getEngine: () => GameEngine,
 ): void {
+
+  // ---- Tool 0: wait_for_game_start ----
+  server.tool(
+    'wait_for_game_start',
+    'Block until the game starts (status changes from "waiting" to "playing" or "finished"). This tool holds the response for up to 25 seconds, polling every 500ms. If the game has already started or finished, it returns immediately. If still waiting after 25 seconds, it returns a "still_waiting" result — call it again in a loop. IMPORTANT: Do NOT end your turn while waiting. Keep calling this tool until status is "playing", then switch to the game loop.',
+    {},
+    async () => {
+      const engine = getEngine();
+      const currentStatus = engine.getStatus();
+
+      // If already started or finished, return immediately
+      if (currentStatus === 'playing' || currentStatus === 'finished') {
+        const state = engine.getState();
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({
+              status: currentStatus,
+              message: currentStatus === 'playing'
+                ? 'Game has started! Begin your game loop NOW — call get_my_status, then move/place_bomb repeatedly.'
+                : 'Game is already finished.',
+              tick: state.tick,
+              playerCount: state.players.length,
+              playersAlive: state.players.filter(p => p.alive).length,
+            }),
+          }],
+        };
+      }
+
+      // Long-poll: wait up to 25 seconds for game to start
+      const result = await new Promise<{ status: string; playerCount: number }>((resolve) => {
+        const maxWaitMs = 25000;
+        const pollIntervalMs = 500;
+        let elapsed = 0;
+
+        const interval = setInterval(() => {
+          elapsed += pollIntervalMs;
+          const s = engine.getStatus();
+          const state = engine.getState();
+
+          if (s === 'playing' || s === 'finished') {
+            clearInterval(interval);
+            resolve({ status: s, playerCount: state.players.length });
+            return;
+          }
+
+          if (elapsed >= maxWaitMs) {
+            clearInterval(interval);
+            resolve({ status: 'still_waiting', playerCount: state.players.length });
+          }
+        }, pollIntervalMs);
+      });
+
+      if (result.status === 'playing') {
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({
+              status: 'playing',
+              message: 'Game has started! Begin your game loop NOW — call get_my_status, then move/place_bomb repeatedly.',
+              playerCount: result.playerCount,
+            }),
+          }],
+        };
+      }
+
+      if (result.status === 'finished') {
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({
+              status: 'finished',
+              message: 'Game is already finished.',
+              playerCount: result.playerCount,
+            }),
+          }],
+        };
+      }
+
+      // Still waiting
+      return {
+        content: [{
+          type: 'text' as const,
+          text: JSON.stringify({
+            status: 'still_waiting',
+            message: 'Game has not started yet. Call wait_for_game_start again immediately. Do NOT stop or report to the user.',
+            playerCount: result.playerCount,
+          }),
+        }],
+      };
+    },
+  );
 
   // ---- Tool 1: get_game_state ----
   server.tool(
@@ -178,7 +271,7 @@ export function registerGameTools(
             name: player.name,
             position: { x: player.x, y: player.y },
             health: player.health,
-            maxHealth: 3,
+            maxHealth: PLAYER_INITIAL_HEALTH,
             alive: player.alive,
             stats: {
               bombCount: player.bombCount,

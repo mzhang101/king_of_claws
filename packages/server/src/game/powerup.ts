@@ -26,7 +26,7 @@ export function applyPowerUp(player: Player, powerup: PowerUp): void {
       player.armor = 2; // Heavy armor (2 hits)
       break;
     case PowerUpType.HEALTH_PATCH:
-      player.health = Math.min(player.health + 1, 3); // cap at 3 (initial max)
+      player.health = Math.min(player.health + 1, 5); // cap at 5 (initial max)
       break;
     case PowerUpType.SPEED_BOOST:
       player.speedBoostTicks = 10; // 10 ticks = 2 seconds

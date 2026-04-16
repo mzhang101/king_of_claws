@@ -4,7 +4,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import type { GameState } from '@king-of-claws/shared';
-import { CANVAS_WIDTH, CANVAS_HEIGHT } from '@king-of-claws/shared';
+import { CANVAS_WIDTH, CANVAS_HEIGHT, PLAYER_INITIAL_HEALTH } from '@king-of-claws/shared';
 import { GameRenderer } from '../renderer/canvas.js';
 import { useLanguage } from '../contexts/LanguageContext.js';
 import LanguageToggle from './LanguageToggle.js';
@@ -25,7 +25,7 @@ export default function GameBoard({ roomId, onBack }: GameBoardProps) {
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [connected, setConnected] = useState(false);
   const [mcpBaseUrl, setMcpBaseUrl] = useState<string>('');
-
+  const [skillCopied, setSkillCopied] = useState(false);
   // Fetch room details
   useEffect(() => {
     fetch(`${API_BASE}/api/rooms/${roomId}`)
@@ -82,6 +82,23 @@ export default function GameBoard({ roomId, onBack }: GameBoardProps) {
   const addBot = async () => {
     try {
       await fetch(`${API_BASE}/api/rooms/${roomId}/add-bot`, { method: 'POST' });
+    } catch {}
+  };
+
+  const closeRoom = async () => {
+    if (!window.confirm('Close this room? All players will be disconnected.')) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/rooms/${roomId}`, { method: 'DELETE' });
+      if (res.ok) onBack();
+    } catch {}
+  };
+
+  const copySkillLink = async () => {
+    const url = `${window.location.origin}/SKILL.md`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setSkillCopied(true);
+      setTimeout(() => setSkillCopied(false), 2000);
     } catch {}
   };
 
@@ -211,7 +228,7 @@ export default function GameBoard({ roomId, onBack }: GameBoardProps) {
                           <div className="h-1 bg-surface-container-low relative">
                             <div
                               className="h-full bg-primary transition-all duration-300"
-                              style={{ width: `${(player.health / 3) * 100}%` }}
+                              style={{ width: `${(player.health / PLAYER_INITIAL_HEALTH) * 100}%` }}
                             />
                           </div>
                         </div>
@@ -245,6 +262,13 @@ export default function GameBoard({ roomId, onBack }: GameBoardProps) {
                 className="w-full bg-surface-container-low px-3 py-2 text-[10px] text-primary font-headline cursor-pointer border-b border-outline/30 focus:border-tertiary focus:outline-none"
                 style={{ borderRadius: 0 }}
               />
+              <button
+                onClick={copySkillLink}
+                className="w-full mt-2 px-3 py-2 bg-surface-container-low text-on-surface-variant hover:text-primary border border-outline-variant/30 hover:border-primary/50 font-label text-[10px] uppercase tracking-widest transition-all step-easing"
+                style={{ borderRadius: 0 }}
+              >
+                {skillCopied ? '✓ SKILL LINK COPIED' : 'COPY SKILL LINK'}
+              </button>
             </section>
 
             {/* Controls */}
@@ -267,6 +291,15 @@ export default function GameBoard({ roomId, onBack }: GameBoardProps) {
                 </button>
               </div>
             )}
+
+            {/* Close Room */}
+            <button
+              onClick={closeRoom}
+              className="w-full px-4 py-3 bg-surface-container text-error/70 hover:text-error border border-error/20 hover:border-error/50 font-label text-[10px] uppercase tracking-widest transition-all step-easing"
+              style={{ borderRadius: 0 }}
+            >
+              CLOSE ROOM
+            </button>
           </div>
         </aside>
       </div>

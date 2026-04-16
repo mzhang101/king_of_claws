@@ -13,7 +13,7 @@ export const TICK_INTERVAL_MS = 1000 / TICK_RATE; // 200ms
 // -- Players --
 export const MAX_PLAYERS = 4;
 export const MIN_PLAYERS_TO_START = 2;
-export const PLAYER_INITIAL_HEALTH = 3;
+export const PLAYER_INITIAL_HEALTH = 5;
 export const PLAYER_INITIAL_BOMB_COUNT = 1;
 export const PLAYER_INITIAL_BOMB_RANGE = 2;
 export const PLAYER_INITIAL_SPEED = 1;

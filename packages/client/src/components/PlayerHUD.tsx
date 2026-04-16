@@ -3,6 +3,7 @@
 // ============================================================
 
 import type { Player } from '@king-of-claws/shared';
+import { PLAYER_INITIAL_HEALTH } from '@king-of-claws/shared';
 
 interface PlayerHUDProps {
   players: Player[];
@@ -62,7 +63,7 @@ export default function PlayerHUD({ players }: PlayerHUDProps) {
                   <div
                     className="h-full transition-all duration-300"
                     style={{
-                      width: `${(player.health / 3) * 100}%`,
+                      width: `${(player.health / PLAYER_INITIAL_HEALTH) * 100}%`,
                       backgroundColor: player.health > 1 ? '#00FF00' : player.health > 0.5 ? '#FFFF00' : '#FF0000',
                       boxShadow: player.health > 1 ? '0 0 10px #00FF00' : player.health > 0.5 ? '0 0 10px #FFFF00' : '0 0 10px #FF0000',
                     }}

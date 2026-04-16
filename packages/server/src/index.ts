@@ -104,6 +104,17 @@ app.post('/api/rooms/:roomId/add-bot', (req, res) => {
   res.json({ success: true, name: botName, message: `Bot "${botName}" added!` });
 });
 
+// Close/delete a room
+app.delete('/api/rooms/:roomId', (req, res) => {
+  const deleted = roomManager.deleteRoom(req.params.roomId);
+  if (!deleted) {
+    res.status(404).json({ error: 'Room not found' });
+    return;
+  }
+  console.log(`[API] Room deleted: ${req.params.roomId}`);
+  res.json({ success: true, message: 'Room closed' });
+});
+
 // Room details
 app.get('/api/rooms/:roomId', (req, res) => {
   const room = roomManager.getRoom(req.params.roomId);

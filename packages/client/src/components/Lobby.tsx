@@ -16,6 +16,7 @@ export default function Lobby({ onJoinRoom }: LobbyProps) {
   const [showCreateRoom, setShowCreateRoom] = useState(false);
   const [newRoomName, setNewRoomName] = useState('');
   const [loading, setLoading] = useState(false);
+  const [skillCopied, setSkillCopied] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
 
   const fetchRooms = async () => {
@@ -105,6 +106,15 @@ export default function Lobby({ onJoinRoom }: LobbyProps) {
     return 'text-on-surface-variant border-outline-variant';
   };
 
+  const copySkillLink = async () => {
+    const url = `${window.location.origin}/SKILL.md`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setSkillCopied(true);
+      setTimeout(() => setSkillCopied(false), 2000);
+    } catch {}
+  };
+
   return (
     <div className="min-h-screen bg-background text-on-background font-body">
       {/* Header */}
@@ -118,7 +128,15 @@ export default function Lobby({ onJoinRoom }: LobbyProps) {
               {t.selectRoom}
             </p>
           </div>
-          <LanguageToggle />
+          <div className="flex items-center gap-3">
+            <button
+              onClick={copySkillLink}
+              className="px-3 py-1.5 bg-surface-container-highest text-on-surface-variant hover:text-primary border border-outline-variant hover:border-primary/50 font-label text-[10px] uppercase tracking-widest transition-all step-easing"
+            >
+              {skillCopied ? '✓ COPIED' : 'COPY SKILL LINK'}
+            </button>
+            <LanguageToggle />
+          </div>
         </div>
       </header>
 
@@ -129,7 +147,8 @@ export default function Lobby({ onJoinRoom }: LobbyProps) {
           {rooms.map((room) => (
             <div
               key={room.id}
-              className="bg-surface-container border border-outline-variant hover:border-primary/50 transition-all step-easing group relative overflow-hidden"
+              onClick={() => onJoinRoom(room.id)}
+              className="bg-surface-container border border-outline-variant hover:border-primary/50 transition-all step-easing group relative overflow-hidden cursor-pointer"
             >
               {/* Gradient Background */}
               <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-secondary/5 opacity-0 group-hover:opacity-100 transition-opacity" />

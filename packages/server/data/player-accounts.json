@@ -1,1 +1,22 @@
-[]
+[
+  {
+    "id": "b41eb9bb2d3a8acc5b1b1cd5a1e960e2",
+    "token": "46644370eba2276110a26716c0a9e766d510a57c8220bd5cd1ffd1bcdb28d36c",
+    "credits": 1000,
+    "agentId": "player-1776313696862-7ldiqjsmy",
+    "roomId": "7224918e",
+    "createdAt": 1776313696862,
+    "lastLogin": 1776313696862,
+    "lastAirdropTick": -999
+  },
+  {
+    "id": "26466a7f589b528708ab4b3296074e85",
+    "token": "8dd9e547a95796ed9bb69ad57bca9d92bb359acebb1397c956e46465bce37bfa",
+    "credits": 1000,
+    "agentId": "player-1776320104047-164o9lqbb",
+    "roomId": "0c79f82b",
+    "createdAt": 1776320104047,
+    "lastLogin": 1776320104047,
+    "lastAirdropTick": -999
+  }
+]

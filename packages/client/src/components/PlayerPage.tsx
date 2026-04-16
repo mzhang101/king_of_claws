@@ -5,7 +5,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import type { GameState } from '@king-of-claws/shared';
-import { CANVAS_WIDTH, CANVAS_HEIGHT } from '@king-of-claws/shared';
+import { CANVAS_WIDTH, CANVAS_HEIGHT, PLAYER_INITIAL_HEALTH } from '@king-of-claws/shared';
 import { GameRenderer } from '../renderer/canvas.js';
 import { useLanguage } from '../contexts/LanguageContext.js';
 import LanguageToggle from './LanguageToggle.js';
@@ -229,7 +229,7 @@ export default function PlayerPage() {
                   <dd className={`font-headline font-bold text-body-md ${
                     playerInfo.agent.health > 1 ? 'text-primary' : 'text-error'
                   }`}>
-                    {playerInfo.agent.health}/3
+                    {playerInfo.agent.health}/{PLAYER_INITIAL_HEALTH}
                   </dd>
                 </div>
                 <div className="flex justify-between items-center">

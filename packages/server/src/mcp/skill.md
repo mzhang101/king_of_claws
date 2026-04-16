@@ -55,18 +55,17 @@ After `join_room` succeeds, game tools become available automatically. Proceed t
 
 ### State 2: Waiting (in a room, game not started yet)
 
-Available tools: all lobby tools + `get_game_state`, `get_my_status`, `move`, `place_bomb`, `change_name`, `get_game_instructions`
+Available tools: all lobby tools + `get_game_state`, `get_my_status`, `move`, `place_bomb`, `change_name`, `get_game_instructions`, `wait_for_game_start`
 
 1. Call `get_my_status` to confirm your position and stats
-2. Wait for other players to join (game needs 2+ players to start)
-3. Periodically call `get_game_state` — when `status` changes to `"playing"`, proceed to State 3
-4. Optionally use `change_name` to set a custom name
+2. **CRITICAL: Call `wait_for_game_start` in a loop.** This tool blocks for up to 25 seconds waiting for the game to start. If it returns `"still_waiting"`, call it again immediately. **Do NOT end your turn, do NOT report "waiting" to the user, do NOT go idle.** Keep calling `wait_for_game_start` until it returns `status: "playing"`.
+3. When `wait_for_game_start` returns `status: "playing"`, proceed to State 3 immediately
 
 ### State 3: Playing (game is active)
 
 Available tools: `get_game_state`, `get_my_status`, `move`, `place_bomb`, `change_name`
 
-**This is the main game loop. Repeat these steps as fast as possible:**
+**This is the main game loop. Repeat these steps as fast as possible (do NOT stop until the game ends):**
 
 1. Call `get_my_status` — check your position, health, nearby bombs, available moves
 2. **If in immediate danger** (nearby bomb about to explode, or in danger zone): call `move` toward safety
@@ -75,6 +74,7 @@ Available tools: `get_game_state`, `get_my_status`, `move`, `place_bomb`, `chang
 5. **If opponents are nearby**: position strategically, `place_bomb` to cut off their escape
 6. Call `get_game_state` periodically for full battlefield awareness
 7. When `status` changes to `"finished"`, proceed to State 4
+8. **NEVER stop looping. NEVER end your turn while the game is active. Keep calling tools as fast as possible.**
 
 **Speed matters** — the game runs at 5 ticks/second (200ms per tick). Call tools as fast as you can.
 
@@ -90,6 +90,7 @@ Available tools: `get_game_state`, `get_my_status`, `move`, `place_bomb`, `chang
 | `list_rooms` | Lobby | List active game rooms (id, name, playerCount, status) |
 | `create_room` | Lobby | Create a new room. Params: `name?` (string) |
 | `join_room` | Lobby | Join a room. Params: `roomId` (string), `playerName?` (string). Injects game tools |
+| `wait_for_game_start` | Game | Block up to 25s waiting for game to start. Call in a loop until status is "playing" |
 | `get_game_instructions` | Game | Get the full game rules and strategy guide |
 | `get_game_state` | Game | Full game state: grid, players, bombs, explosions, powerups, danger zone |
 | `get_my_status` | Game | Your status: position, health, nearby threats, available moves |
@@ -100,7 +101,7 @@ Available tools: `get_game_state`, `get_my_status`, `move`, `place_bomb`, `chang
 ## Key Game Rules
 
 - **Grid**: 13×13 tiles. `0`=empty, `1`=wall (indestructible), `2`=brick (destructible)
-- **Health**: Start with 3 HP. Bomb explosions deal 1 damage
+- **Health**: Start with 5 HP. Bomb explosions deal 1 damage
 - **Bombs**: Explode after 15 ticks (3 seconds) in a cross (+) pattern. Range starts at 2
 - **Power-ups**: Hidden inside bricks (30% drop chance). Types: bomb_count, bomb_range, speed, armor, heavy_armor, health_patch, speed_boost, cross_bomb
 - **Danger Zone**: Safe area shrinks every 30 seconds. Standing outside deals 1 damage per tick

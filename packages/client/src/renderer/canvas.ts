@@ -3,7 +3,7 @@
 // ============================================================
 
 import type { GameState, Player, Bomb, Explosion, PowerUp, DangerZone } from '@king-of-claws/shared';
-import { TileType, PowerUpType, GRID_WIDTH, GRID_HEIGHT, TILE_SIZE, CANVAS_WIDTH, CANVAS_HEIGHT } from '@king-of-claws/shared';
+import { TileType, PowerUpType, GRID_WIDTH, GRID_HEIGHT, TILE_SIZE, CANVAS_WIDTH, CANVAS_HEIGHT, PLAYER_INITIAL_HEALTH } from '@king-of-claws/shared';
 
 // -- Retro Cyberpunk Colors --
 const COLORS = {
@@ -395,7 +395,7 @@ export class GameRenderer {
       const barH = 3;
       const barX = px - barW / 2;
       const barY = py + 3;
-      const hpFraction = player.health / 3;
+      const hpFraction = player.health / PLAYER_INITIAL_HEALTH;
 
       ctx.fillStyle = '#0a0a0a';
       ctx.fillRect(barX, barY, barW, barH);
