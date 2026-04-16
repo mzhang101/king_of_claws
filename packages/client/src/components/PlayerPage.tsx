@@ -93,12 +93,12 @@ export default function PlayerPage() {
     return () => ws.close();
   }, [playerInfo?.room.id]);
 
-  // Init canvas renderer
+  // Init canvas renderer (canvas only in DOM after playerInfo loads)
   useEffect(() => {
     if (canvasRef.current && !rendererRef.current) {
       rendererRef.current = new GameRenderer(canvasRef.current);
     }
-  }, []);
+  }, [playerInfo]);
 
   // Render on state change
   useEffect(() => {
