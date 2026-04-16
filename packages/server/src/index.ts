@@ -327,6 +327,26 @@ app.get('/api/player/:token/state', (req, res) => {
   });
 });
 
+// GET /api/player/:token/board — full board state fallback for PlayerPage rendering
+app.get('/api/player/:token/board', (req, res) => {
+  const { token } = req.params;
+  const account = getAccountByToken(token);
+
+  if (!account) {
+    res.status(404).json({ error: 'Player account not found' });
+    return;
+  }
+
+  const room = roomManager.getRoom(account.roomId);
+  if (!room) {
+    res.status(404).json({ error: 'Room not found' });
+    return;
+  }
+
+  const state = room.getEngine().getState();
+  res.json({ state });
+});
+
 // POST /api/player/:token/action — submit a game action from a script
 app.post('/api/player/:token/action', (req, res) => {
   const { token } = req.params;

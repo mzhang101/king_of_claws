@@ -47,6 +47,8 @@ export default function PlayerPage() {
   const [error, setError] = useState<string | null>(null);
   const [airdropLoading, setAirdropLoading] = useState(false);
   const [airdropMessage, setAirdropMessage] = useState<string | null>(null);
+  const [wsConnected, setWsConnected] = useState(false);
+  const [usingFallback, setUsingFallback] = useState(false);
 
   // Fetch player info
   useEffect(() => {
@@ -75,23 +77,80 @@ export default function PlayerPage() {
   useEffect(() => {
     if (!playerInfo) return;
 
-    const ws = new WebSocket(WS_URL);
+    const roomId = playerInfo.room.id;
+    let ws: WebSocket | null = null;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    let isCancelled = false;
 
-    ws.onopen = () => {
-      ws.send(JSON.stringify({ type: 'join_room', roomId: playerInfo.room.id }));
-    };
+    const connect = () => {
+      if (isCancelled) return;
 
-    ws.onmessage = (ev) => {
-      try {
-        const msg = JSON.parse(ev.data);
-        if (msg.type === 'game_state') {
-          setGameState(msg.state);
+      ws = new WebSocket(WS_URL);
+
+      ws.onopen = () => {
+        setWsConnected(true);
+        setUsingFallback(false);
+        ws?.send(JSON.stringify({ type: 'join_room', roomId }));
+      };
+
+      ws.onmessage = (ev) => {
+        try {
+          const msg = JSON.parse(ev.data);
+          if (msg.type === 'game_state') {
+            setGameState(msg.state);
+            setUsingFallback(false);
+          }
+        } catch (err) {
+          console.warn('[PlayerPage] Failed to parse WS message', err);
         }
-      } catch {}
+      };
+
+      ws.onerror = (err) => {
+        console.warn('[PlayerPage] WebSocket error', err);
+      };
+
+      ws.onclose = () => {
+        setWsConnected(false);
+        if (!isCancelled) {
+          reconnectTimer = setTimeout(connect, 2000);
+        }
+      };
     };
 
-    return () => ws.close();
+    connect();
+
+    return () => {
+      isCancelled = true;
+      setWsConnected(false);
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      ws?.close();
+    };
   }, [playerInfo?.room.id]);
+
+  // REST fallback: keep board visible even if WS first frame is missed.
+  useEffect(() => {
+    if (!token) return;
+
+    const fetchBoard = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/player/${token}/board`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data?.state) {
+          setGameState(data.state);
+          if (!wsConnected) {
+            setUsingFallback(true);
+          }
+        }
+      } catch {
+        // Fallback polling errors are non-fatal.
+      }
+    };
+
+    fetchBoard();
+    const interval = setInterval(fetchBoard, 3000);
+    return () => clearInterval(interval);
+  }, [token, wsConnected]);
 
   // Init canvas renderer (canvas only in DOM after playerInfo loads)
   useEffect(() => {
@@ -178,6 +237,13 @@ export default function PlayerPage() {
                 : 'border-error/30 text-error bg-error/10'
             }`}>
               {playerInfo.agent.alive ? t.alive : t.dead}
+            </span>
+            <span className={`px-2 py-1 border font-label text-[10px] uppercase tracking-[0.15em] ${
+              wsConnected
+                ? 'border-primary/30 text-primary bg-primary/10'
+                : 'border-error/30 text-error bg-error/10'
+            }`}>
+              {wsConnected ? 'WS LIVE' : (usingFallback ? 'REST FALLBACK' : 'WS RETRY')}
             </span>
           </div>
 
