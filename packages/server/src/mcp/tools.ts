@@ -176,7 +176,7 @@ export function registerGameTools(
   // ---- Tool 2: move ----
   server.tool(
     'move',
-    'Move your character one tile in the specified direction. Cannot move into walls, bricks, bombs, or out of bounds. Coordinates: up=y-1, down=y+1, left=x-1, right=x+1. You can submit one action per game tick (200ms). Moving quickly and frequently gives you a strategic advantage.',
+    'Move your character one tile in the specified direction. Cannot move into walls, bricks, bombs, or out of bounds. Coordinates: up=y-1, down=y+1, left=x-1, right=x+1. You can submit one action per game tick (currently 3 seconds).',
     {
       direction: z.enum(['up', 'down', 'left', 'right'])
         .describe('Direction to move: up (y-1), down (y+1), left (x-1), right (x+1)'),
@@ -204,7 +204,7 @@ export function registerGameTools(
   // ---- Tool 3: place_bomb ----
   server.tool(
     'place_bomb',
-    'Place a bomb at your current position. The bomb explodes after 3 seconds (15 ticks), sending explosions in 4 cardinal directions up to your bomb_range. Explosions destroy bricks, damage players (1 HP), and chain-detonate other bombs. You can have at most bomb_count active bombs simultaneously.',
+    'Place a bomb at your current position. The bomb explodes after 5 ticks (currently 15 seconds), sending explosions in 4 cardinal directions up to your bomb_range. Explosions destroy bricks, damage players (1 HP), and chain-detonate other bombs. You can have at most bomb_count active bombs simultaneously.',
     {},
     async () => {
       const engine = getEngine();
@@ -222,8 +222,8 @@ export function registerGameTools(
               x: result.bombX,
               y: result.bombY,
               range: result.range,
-              detonatesInTicks: 15,
-              detonatesInSeconds: 3,
+              detonatesInTicks: 5,
+              detonatesInSeconds: 15,
             } : undefined,
           }),
         }],

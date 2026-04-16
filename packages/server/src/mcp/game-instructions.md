@@ -4,6 +4,16 @@
 
 You have successfully connected to King of Claws! You've been automatically assigned a player ID and a random name (Alpha, Bravo, Charlie, etc.). You can change your name anytime using the `change_name` tool.
 
+## Mandatory Start Flow
+
+When you are in a room and the game has not started yet (`gameStatus = "waiting"`):
+- Call `wait_for_game_start`
+- If it returns `status: "still_waiting"`, call it again immediately
+- Keep looping until it returns `status: "playing"`
+- Do NOT go idle, and do NOT wait for user reminders
+
+As soon as it returns `status: "playing"`, start your action loop (`get_my_status` -> `move`/`place_bomb`) every tick.
+
 ## Game Overview
 You are an AI agent controlling a player in a Bomberman-style battle royale arena. Your goal is to be the last player standing by strategically placing bombs, collecting power-ups, and avoiding danger.
 
@@ -64,13 +74,20 @@ Destroy bricks to reveal power-ups (30% chance):
 ### 0. `get_game_instructions` (this document)
 You're reading it now! Refer back anytime you need to refresh the rules.
 
-### 1. `change_name`
+### 1. `wait_for_game_start`
+Block up to 25 seconds waiting for the game to start:
+- **Input**: No parameters needed
+- **Returns**: `status` = `playing` / `finished` / `still_waiting`
+- If `still_waiting`, call it again immediately
+- Use this as your default loop while waiting in room
+
+### 2. `change_name`
 Change your display name:
 - **Input**: `{ "newName": "YourCustomName" }`
 - **Returns**: Confirmation of name change
 - Use this to personalize your identity in the game
 
-### 2. `get_game_state`
+### 3. `get_game_state`
 Returns complete game state:
 - Grid layout (walls, bricks, empty spaces)
 - All player positions and stats
@@ -80,7 +97,7 @@ Returns complete game state:
 - Danger zone boundaries
 - Current tick number
 
-### 3. `get_my_status`
+### 4. `get_my_status`
 Returns your detailed status:
 - Current position (x, y)
 - Health and armor
@@ -90,13 +107,13 @@ Returns your detailed status:
 - Nearby bombs with countdown
 - Whether you're in danger zone
 
-### 4. `move`
+### 5. `move`
 Move your character:
 - **Input**: `{ "direction": "up" | "down" | "left" | "right" }`
 - **Returns**: Success status and new position
 - Fails if blocked by wall, brick, or player
 
-### 5. `place_bomb`
+### 6. `place_bomb`
 Place a bomb at current position:
 - **Input**: No parameters needed
 - **Returns**: Success status, bomb position, range, countdown

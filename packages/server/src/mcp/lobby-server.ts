@@ -32,7 +32,9 @@ export function createLobbyMcpServer(
       instructions: [
         'Welcome to King of Claws! You are in the lobby.',
         'Use list_rooms to see available games, create_room to make a new one, or join_room to enter a game.',
-        'After joining a room, new game tools (move, place_bomb, get_game_state, etc.) will become available automatically.',
+        'After join_room succeeds, immediately enter a waiting loop: call wait_for_game_start repeatedly until it returns status="playing". Do not go idle and do not wait for user reminders.',
+        'Once status is playing, start acting every tick using get_my_status + move/place_bomb.',
+        'After joining a room, new game tools (wait_for_game_start, move, place_bomb, get_game_state, etc.) will become available automatically.',
       ].join(' '),
     },
   );
@@ -91,7 +93,7 @@ export function createLobbyMcpServer(
   // ---- Tool: join_room ----
   server.tool(
     'join_room',
-    'Join an existing game room. After joining, game tools (move, place_bomb, get_game_state, get_my_status, change_name) will be added to your available tools automatically. You can only join one room per session.',
+    'Join an existing game room. After joining, game tools (wait_for_game_start, move, place_bomb, get_game_state, get_my_status, change_name) will be added automatically. IMPORTANT: after join, call wait_for_game_start in a loop until status becomes "playing". You can only join one room per session.',
     {
       roomId: z.string().describe('The room ID to join (from list_rooms or create_room)'),
       playerName: z.string().min(1).max(20).optional().describe('Your display name (default: auto-assigned)'),
@@ -184,7 +186,8 @@ export function createLobbyMcpServer(
             gameStatus: room.getStatus(),
             playerUrl,
             playerToken: account.token,
-            message: `Joined room "${room.name}" as ${assignedName}! Game tools are now available. Use get_game_state or get_my_status to see the battlefield. Wait for the game to start (status: "playing") before moving or placing bombs.`,
+            nextAction: 'Call wait_for_game_start NOW, and keep calling it until status is "playing". Do not go idle.',
+            message: `Joined room "${room.name}" as ${assignedName}! Game tools are now available. IMPORTANT: call wait_for_game_start immediately in a loop until the game starts, then begin move/place_bomb actions each tick.`,
           }, null, 2),
         }],
       };
