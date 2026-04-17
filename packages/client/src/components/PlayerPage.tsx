@@ -37,6 +37,68 @@ interface PlayerInfo {
   };
 }
 
+function formatRelativeTime(timestamp: number | null, now: number): string {
+  if (!timestamp) return 'never';
+  const diffSeconds = Math.max(0, Math.floor((now - timestamp) / 1000));
+  if (diffSeconds < 1) return 'just now';
+  if (diffSeconds < 60) return `${diffSeconds}s ago`;
+  const diffMinutes = Math.floor(diffSeconds / 60);
+  return `${diffMinutes}m ago`;
+}
+
+function getStrategicStatus(
+  strategicAttached: boolean,
+  lastStrategicAt: number | null,
+  now: number,
+): { label: string; className: string } {
+  if (!strategicAttached) {
+    return {
+      label: 'NOT ATTACHED',
+      className: 'border-outline-variant/30 text-on-surface-variant bg-surface-container-highest',
+    };
+  }
+
+  if (!lastStrategicAt) {
+    return {
+      label: 'CONNECTED',
+      className: 'border-secondary/30 text-secondary bg-secondary/10',
+    };
+  }
+
+  if (now - lastStrategicAt <= 5000) {
+    return {
+      label: 'THINKING',
+      className: 'border-primary/30 text-primary bg-primary/10',
+    };
+  }
+
+  return {
+    label: 'IDLE',
+    className: 'border-tertiary/30 text-tertiary bg-tertiary/10',
+  };
+}
+
+function getTacticalStatus(usingFallback: boolean, tacticalRegistered: boolean): { label: string; className: string } {
+  if (!tacticalRegistered) {
+    return {
+      label: 'OFFLINE',
+      className: 'border-outline-variant/30 text-on-surface-variant bg-surface-container-highest',
+    };
+  }
+
+  if (usingFallback) {
+    return {
+      label: 'RULE FALLBACK',
+      className: 'border-error/30 text-error bg-error/10',
+    };
+  }
+
+  return {
+    label: 'GEMINI LIVE',
+    className: 'border-primary/30 text-primary bg-primary/10',
+  };
+}
+
 export default function PlayerPage() {
   const { t } = useLanguage();
   const { token } = useParams<{ token: string }>();
@@ -49,6 +111,12 @@ export default function PlayerPage() {
   const [airdropMessage, setAirdropMessage] = useState<string | null>(null);
   const [wsConnected, setWsConnected] = useState(false);
   const [usingFallback, setUsingFallback] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Fetch player info
   useEffect(() => {
@@ -69,7 +137,7 @@ export default function PlayerPage() {
     };
 
     fetchPlayerInfo();
-    const interval = setInterval(fetchPlayerInfo, 2000);
+    const interval = setInterval(fetchPlayerInfo, 1000);
     return () => clearInterval(interval);
   }, [token]);
 
@@ -112,7 +180,7 @@ export default function PlayerPage() {
       ws.onclose = () => {
         setWsConnected(false);
         if (!isCancelled) {
-          reconnectTimer = setTimeout(connect, 2000);
+          reconnectTimer = setTimeout(connect, 1000);
         }
       };
     };
@@ -148,7 +216,7 @@ export default function PlayerPage() {
     };
 
     fetchBoard();
-    const interval = setInterval(fetchBoard, 3000);
+    const interval = setInterval(fetchBoard, 1000);
     return () => clearInterval(interval);
   }, [token, wsConnected]);
 
@@ -222,6 +290,12 @@ export default function PlayerPage() {
     );
   }
 
+  const myTelemetry = gameState?.aiTelemetry?.find(entry => entry.playerId === playerInfo.agent.id) ?? null;
+  const myActions = gameState?.recentActions?.filter(log => log.playerId === playerInfo.agent.id) ?? [];
+  const latestAction = myActions[myActions.length - 1];
+  const strategicStatus = getStrategicStatus(myTelemetry?.strategicAttached ?? false, myTelemetry?.lastStrategicAt ?? null, now);
+  const tacticalStatus = getTacticalStatus(myTelemetry?.usingFallback ?? true, myTelemetry?.tacticalRegistered ?? false);
+
   return (
     <div className="min-h-screen flex flex-col bg-background">
       {/* Top Bar - Full Width */}
@@ -244,6 +318,9 @@ export default function PlayerPage() {
                 : 'border-error/30 text-error bg-error/10'
             }`}>
               {wsConnected ? 'WS LIVE' : (usingFallback ? 'REST FALLBACK' : 'WS RETRY')}
+            </span>
+            <span className="px-2 py-1 border border-secondary/30 text-secondary bg-secondary/10 font-label text-[10px] uppercase tracking-[0.15em]">
+              1S TICK
             </span>
           </div>
 
@@ -307,6 +384,91 @@ export default function PlayerPage() {
                   </dd>
                 </div>
               </dl>
+            </section>
+
+            <section className="space-y-4">
+              <h3 className="font-headline font-bold text-lg tracking-tight text-on-surface uppercase border-b border-outline-variant/20 pb-2">
+                AI Pipeline
+              </h3>
+
+              <div className="space-y-3">
+                <div className="bg-surface-container-highest p-4 border border-outline-variant/20 space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-label text-[10px] text-on-surface-variant uppercase tracking-[0.15em]">
+                      OpenClaw Strategic Layer
+                    </span>
+                    <span className={`px-2 py-0.5 border font-label text-[9px] uppercase tracking-[0.15em] ${strategicStatus.className}`}>
+                      {strategicStatus.label}
+                    </span>
+                  </div>
+
+                  <div className="space-y-2 text-body-sm text-on-surface">
+                    <div className="flex justify-between gap-3">
+                      <span className="text-on-surface-variant">Controller</span>
+                      <span className="font-headline font-bold uppercase">{myTelemetry?.source === 'mcp' ? 'OPENCLAW' : 'BOT'}</span>
+                    </div>
+                    <div className="flex justify-between gap-3">
+                      <span className="text-on-surface-variant">Last activity</span>
+                      <span>{formatRelativeTime(myTelemetry?.lastStrategicAt ?? null, now)}</span>
+                    </div>
+                    <div className="flex justify-between gap-3">
+                      <span className="text-on-surface-variant">Strategic calls</span>
+                      <span>{myTelemetry?.strategicCallCount ?? 0}</span>
+                    </div>
+                    <div className="flex justify-between gap-3">
+                      <span className="text-on-surface-variant">Last tool</span>
+                      <span className="font-mono text-[11px]">{myTelemetry?.lastStrategicTool ?? 'none'}</span>
+                    </div>
+                  </div>
+
+                  {myTelemetry?.lastStrategicSummary && (
+                    <p className="text-body-sm text-secondary leading-relaxed">
+                      {myTelemetry.lastStrategicSummary}
+                    </p>
+                  )}
+                  {myTelemetry?.lastDirective && (
+                    <p className="text-body-sm text-on-surface-variant leading-relaxed">
+                      Directive: {myTelemetry.lastDirective}
+                    </p>
+                  )}
+                </div>
+
+                <div className="bg-surface-container-highest p-4 border border-outline-variant/20 space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-label text-[10px] text-on-surface-variant uppercase tracking-[0.15em]">
+                      Tactical Brain
+                    </span>
+                    <span className={`px-2 py-0.5 border font-label text-[9px] uppercase tracking-[0.15em] ${tacticalStatus.className}`}>
+                      {tacticalStatus.label}
+                    </span>
+                  </div>
+
+                  <div className="space-y-2 text-body-sm text-on-surface">
+                    <div className="flex justify-between gap-3">
+                      <span className="text-on-surface-variant">Last decision</span>
+                      <span>{myTelemetry?.lastDecisionAction ?? 'none'}</span>
+                    </div>
+                    <div className="flex justify-between gap-3">
+                      <span className="text-on-surface-variant">Decision tick</span>
+                      <span>{myTelemetry?.lastDecisionTick ?? '-'}</span>
+                    </div>
+                    <div className="flex justify-between gap-3">
+                      <span className="text-on-surface-variant">Latency</span>
+                      <span>{myTelemetry?.lastDecisionLatencyMs != null ? `${myTelemetry.lastDecisionLatencyMs}ms` : '-'}</span>
+                    </div>
+                    <div className="flex justify-between gap-3">
+                      <span className="text-on-surface-variant">Last tactical activity</span>
+                      <span>{formatRelativeTime(myTelemetry?.lastDecisionAt ?? null, now)}</span>
+                    </div>
+                  </div>
+
+                  {myTelemetry?.lastDecisionReasoning && (
+                    <p className="text-body-sm text-primary leading-relaxed">
+                      {myTelemetry.lastDecisionReasoning}
+                    </p>
+                  )}
+                </div>
+              </div>
             </section>
 
             {/* Airdrop Control */}
@@ -387,78 +549,95 @@ export default function PlayerPage() {
         </aside>
       </div>
 
-      {/* Agent Thoughts - Bottom */}
-      {gameState && gameState.recentActions && gameState.recentActions.length > 0 && (
-        <section className="border-t border-surface-container-highest p-4 md:p-6 max-h-64 overflow-y-auto bg-surface-container-low">
-          <div className="flex items-center gap-3 mb-4">
-            <h3 className="font-headline font-bold text-lg tracking-tight text-on-surface uppercase">
-              AI_BRAIN
-            </h3>
-            {/* Strategy mode badge from the latest action */}
-            {(() => {
-              const myActions = gameState.recentActions.filter(log => log.playerId === playerInfo.agent.id);
-              const latest = myActions[myActions.length - 1];
-              if (!latest?.strategyMode) return null;
-              const modeColors: Record<string, string> = {
-                aggressive: 'border-error/40 text-error bg-error/10',
-                defensive: 'border-secondary/40 text-secondary bg-secondary/10',
-                balanced: 'border-primary/40 text-primary bg-primary/10',
-                collect_powerups: 'border-tertiary/40 text-tertiary bg-tertiary/10',
-                flee: 'border-error/40 text-error bg-error/10',
-              };
-              return (
-                <span className={`px-2 py-0.5 border font-label text-[9px] uppercase tracking-[0.15em] ${modeColors[latest.strategyMode] ?? 'border-outline-variant/30 text-on-surface-variant'}`}>
-                  {latest.strategyMode}
-                </span>
-              );
-            })()}
-            {/* Fallback indicator */}
-            {(() => {
-              const myActions = gameState.recentActions.filter(log => log.playerId === playerInfo.agent.id);
-              const latest = myActions[myActions.length - 1];
-              if (!latest?.wasFallback) return null;
-              return (
-                <span className="px-2 py-0.5 border border-error/30 font-label text-[9px] uppercase tracking-[0.15em] text-error bg-error/5">
-                  FALLBACK
-                </span>
-              );
-            })()}
-          </div>
-          <div className="space-y-2">
-            {gameState.recentActions.slice().reverse().filter(log => log.playerId === playerInfo.agent.id).map((log, idx) => (
-              <div key={`${log.tick}-${idx}`} className="border-l-2 border-primary/30 pl-3 py-1 space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-on-surface-variant font-headline text-[10px]">[T{log.tick}]</span>
-                  <span className="text-on-surface text-body-sm font-medium">{log.action}</span>
-                  {log.strategyMode && (
-                    <span className="text-on-surface-variant font-headline text-[9px] uppercase opacity-60">
-                      {log.strategyMode}
-                    </span>
-                  )}
-                  {log.wasFallback && (
-                    <span className="text-error font-headline text-[9px] uppercase">
-                      RULE
-                    </span>
-                  )}
-                </div>
-                {log.aiReasoning && (
-                  <p className="text-primary text-body-sm leading-relaxed">
-                    🤖 {log.aiReasoning}
-                  </p>
+      {gameState && (
+        <section className="border-t border-surface-container-highest p-4 md:p-6 max-h-80 overflow-y-auto bg-surface-container-low space-y-6">
+          {myTelemetry && myTelemetry.recentEvents.length > 0 && (
+            <div>
+              <h3 className="font-headline font-bold text-lg tracking-tight text-on-surface uppercase mb-4">
+                AI Timeline
+              </h3>
+              <div className="space-y-2">
+                {myTelemetry.recentEvents.slice().reverse().map(event => (
+                  <div key={event.id} className="border-l-2 border-secondary/30 pl-3 py-1 space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-on-surface-variant font-headline text-[10px]">[T{event.tick}]</span>
+                      <span className={`px-2 py-0.5 border font-label text-[9px] uppercase tracking-[0.15em] ${
+                        event.layer === 'strategic'
+                          ? 'border-secondary/30 text-secondary bg-secondary/10'
+                          : event.layer === 'tactical'
+                            ? 'border-primary/30 text-primary bg-primary/10'
+                            : 'border-outline-variant/30 text-on-surface-variant bg-surface-container-highest'
+                      }`}>
+                        {event.layer}
+                      </span>
+                      <span className="text-on-surface text-body-sm font-medium">{event.summary}</span>
+                      <span className="text-on-surface-variant text-[11px] ml-auto">{formatRelativeTime(event.timestamp, now)}</span>
+                    </div>
+                    {event.detail && (
+                      <p className="text-on-surface-variant text-body-sm leading-relaxed">
+                        {event.detail}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {myActions.length > 0 && (
+            <div>
+              <div className="flex items-center gap-3 mb-4">
+                <h3 className="font-headline font-bold text-lg tracking-tight text-on-surface uppercase">
+                  Tactical Trace
+                </h3>
+                {latestAction?.strategyMode && (
+                  <span className="px-2 py-0.5 border border-primary/40 text-primary bg-primary/10 font-label text-[9px] uppercase tracking-[0.15em]">
+                    {latestAction.strategyMode}
+                  </span>
                 )}
-                {log.thought && !log.aiReasoning && (
-                  <p className="text-primary text-body-sm leading-relaxed">
-                    💭 {log.thought}
-                  </p>
-                )}
-                {log.shout && (
-                  <p className="text-secondary text-body-sm italic">
-                    💬 "{log.shout}"
-                  </p>
+                {latestAction?.wasFallback && (
+                  <span className="px-2 py-0.5 border border-error/30 font-label text-[9px] uppercase tracking-[0.15em] text-error bg-error/5">
+                    FALLBACK
+                  </span>
                 )}
               </div>
-            ))}
-          </div>
+              <div className="space-y-2">
+                {myActions.slice().reverse().map((log, idx) => (
+                  <div key={`${log.tick}-${idx}`} className="border-l-2 border-primary/30 pl-3 py-1 space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-on-surface-variant font-headline text-[10px]">[T{log.tick}]</span>
+                      <span className="text-on-surface text-body-sm font-medium">{log.action}</span>
+                      {log.strategyMode && (
+                        <span className="text-on-surface-variant font-headline text-[9px] uppercase opacity-60">
+                          {log.strategyMode}
+                        </span>
+                      )}
+                      {log.wasFallback && (
+                        <span className="text-error font-headline text-[9px] uppercase">
+                          RULE
+                        </span>
+                      )}
+                    </div>
+                    {log.aiReasoning && (
+                      <p className="text-primary text-body-sm leading-relaxed">
+                        🤖 {log.aiReasoning}
+                      </p>
+                    )}
+                    {log.thought && !log.aiReasoning && (
+                      <p className="text-primary text-body-sm leading-relaxed">
+                        💭 {log.thought}
+                      </p>
+                    )}
+                    {log.shout && (
+                      <p className="text-secondary text-body-sm italic">
+                        💬 "{log.shout}"
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </section>
       )}
     </div>

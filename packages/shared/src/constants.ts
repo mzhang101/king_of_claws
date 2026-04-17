@@ -7,8 +7,8 @@ export const GRID_WIDTH = 13;
 export const GRID_HEIGHT = 13;
 
 // -- Tick --
-export const TICK_RATE = 1 / 3; // 1 tick every 3 seconds (slow for AI agents)
-export const TICK_INTERVAL_MS = 1000 / TICK_RATE; // 3000ms
+export const TICK_RATE = 1; // 1 tick every 1 second (fast tactical play)
+export const TICK_INTERVAL_MS = 1000 / TICK_RATE; // 1000ms
 
 // -- Players --
 export const MAX_PLAYERS = 4;
@@ -19,19 +19,19 @@ export const PLAYER_INITIAL_BOMB_RANGE = 2;
 export const PLAYER_INITIAL_SPEED = 1;
 
 // -- Bombs --
-export const BOMB_TIMER_TICKS = 5; // 15 seconds at 3s/tick
-export const EXPLOSION_DURATION_TICKS = 3; // 0.6 seconds
+export const BOMB_TIMER_TICKS = 5; // 5 seconds at 1s/tick
+export const EXPLOSION_DURATION_TICKS = 1; // 1 second visual linger
 
 // -- Battle Royale Zone --
 export const ZONE_INITIAL_RADIUS = 6; // full grid safe
-export const ZONE_SHRINK_INTERVAL_TICKS = 150; // 30 seconds
+export const ZONE_SHRINK_INTERVAL_TICKS = 30; // 30 seconds
 export const ZONE_DAMAGE_PER_TICK = 1;
 export const DANGER_ZONE_ENABLED = false; // Disabled for early AI testing
 
 // -- Timing --
 export const COUNTDOWN_SECONDS = 5;
-export const MAX_MATCH_DURATION_TICKS = 1200; // 4 minutes
-export const AFK_TIMEOUT_TICKS = 150; // 30 seconds
+export const MAX_MATCH_DURATION_TICKS = 240; // 4 minutes
+export const AFK_TIMEOUT_TICKS = 30; // 30 seconds
 
 // -- Power-ups --
 export const POWERUP_SPAWN_CHANCE = 0.3;

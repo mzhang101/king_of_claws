@@ -5,9 +5,10 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { GameEngine } from '../game/engine.js';
-import { PLAYER_INITIAL_HEALTH } from '@king-of-claws/shared';
+import { BOMB_TIMER_TICKS, PLAYER_INITIAL_HEALTH, TICK_INTERVAL_MS } from '@king-of-claws/shared';
 import type { Direction } from '@king-of-claws/shared';
 import { getGeminiDiagnostics } from '../ai/gemini-client.js';
+import { recordStrategicTool } from '../ai/telemetry-store.js';
 import { getStrategy, setStrategy, getEvents, clearEvents, pushEvent } from '../ai/strategy-store.js';
 import type { StrategyMode } from '../ai/strategy-store.js';
 import { getAiBrain } from '../game/bot.js';
@@ -187,7 +188,7 @@ export function registerGameTools(
   // ---- Tool 2: move ----
   server.tool(
     'move',
-    'Move your character one tile in the specified direction. Cannot move into walls, bricks, bombs, or out of bounds. Coordinates: up=y-1, down=y+1, left=x-1, right=x+1. You can submit one action per game tick (currently 3 seconds).',
+    'Move your character one tile in the specified direction. Cannot move into walls, bricks, bombs, or out of bounds. Coordinates: up=y-1, down=y+1, left=x-1, right=x+1. You can submit one action per game tick (currently 1 second).',
     {
       direction: z.enum(['up', 'down', 'left', 'right'])
         .describe('Direction to move: up (y-1), down (y+1), left (x-1), right (x+1)'),
@@ -215,7 +216,7 @@ export function registerGameTools(
   // ---- Tool 3: place_bomb ----
   server.tool(
     'place_bomb',
-    'Place a bomb at your current position. The bomb explodes after 5 ticks (currently 15 seconds), sending explosions in 4 cardinal directions up to your bomb_range. Explosions destroy bricks, damage players (1 HP), and chain-detonate other bombs. You can have at most bomb_count active bombs simultaneously.',
+    'Place a bomb at your current position. The bomb explodes after 5 ticks (currently 5 seconds), sending explosions in 4 cardinal directions up to your bomb_range. Explosions destroy bricks, damage players (1 HP), and chain-detonate other bombs. You can have at most bomb_count active bombs simultaneously.',
     {},
     async () => {
       const engine = getEngine();
@@ -233,8 +234,8 @@ export function registerGameTools(
               x: result.bombX,
               y: result.bombY,
               range: result.range,
-              detonatesInTicks: 5,
-              detonatesInSeconds: 15,
+              detonatesInTicks: BOMB_TIMER_TICKS,
+              detonatesInSeconds: BOMB_TIMER_TICKS * (TICK_INTERVAL_MS / 1000),
             } : undefined,
           }),
         }],
@@ -360,7 +361,7 @@ export function registerGameTools(
   // ---- Tool 6: set_strategy (Strategic Layer) ----
   server.tool(
     'set_strategy',
-    'Set the high-level strategy for your AI tactical brain. A fast AI model automatically handles per-tick movement and bomb decisions based on this strategy. You are the strategic commander — set the overall approach and the tactical brain executes it every tick. Call this every 2-3 ticks (6-9 seconds) or when the situation changes significantly.',
+    'Set the high-level strategy for your AI tactical brain. A fast AI model automatically handles per-tick movement and bomb decisions based on this strategy. You are the strategic commander — set the overall approach and the tactical brain executes it every tick. Call this every 5-6 ticks (about 5-6 seconds) or when the situation changes significantly.',
     {
       mode: z.enum(['aggressive', 'defensive', 'balanced', 'collect_powerups', 'flee'])
         .describe('Strategy mode: aggressive (hunt players), defensive (avoid fights), balanced (adaptive), collect_powerups (prioritize items), flee (escape danger)'),
@@ -399,6 +400,13 @@ export function registerGameTools(
         type: 'strategy_changed',
         details: `Strategy changed to ${mode}${targetPlayer ? ` targeting ${targetPlayer}` : ''}`,
       });
+      recordStrategicTool(
+        playerId,
+        state.tick,
+        'set_strategy',
+        `OpenClaw set strategy to ${mode}${targetPlayer ? ` targeting ${targetPlayer}` : ''}.`,
+        { mode, directive: directive ?? null },
+      );
 
       return {
         content: [{
@@ -429,6 +437,12 @@ export function registerGameTools(
 
       const recentDecisions = brain?.getRecentDecisions(3) ?? [];
       const isFallback = brain?.isFallbackMode() ?? true;
+      recordStrategicTool(
+        playerId,
+        state.tick,
+        'get_tactical_status',
+        'OpenClaw inspected tactical status and recent decisions.',
+      );
 
       // Clear events after reading
       clearEvents(playerId);
@@ -497,6 +511,12 @@ export function registerGameTools(
           ? { type: 'move' as const, direction: direction! }
           : { type: 'place_bomb' as const };
         brain.setOverride(playerAction);
+        recordStrategicTool(
+          playerId,
+          engine.getCurrentTick(),
+          'override_next_action',
+          `OpenClaw overrode the next action: ${action}${direction ? ` ${direction}` : ''}.`,
+        );
         return {
           content: [{
             type: 'text' as const,

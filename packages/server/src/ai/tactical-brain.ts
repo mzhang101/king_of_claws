@@ -10,6 +10,7 @@ import { generateTacticalDecision, isGeminiConfigured } from './gemini-client.js
 import { buildTacticalPrompt } from './prompt-builder.js';
 import { ruleFallbackDecision } from './rule-fallback.js';
 import { getStrategy, pushEvent } from './strategy-store.js';
+import { recordAiError, recordTacticalDecision } from './telemetry-store.js';
 import type { TacticalResponse } from './gemini-client.js';
 
 export interface TacticalDecisionLog {
@@ -68,6 +69,7 @@ export class TacticalBrain {
       if (result.accepted) {
         this.logDecision(currentTick, action, 'Override from strategic layer', false, 0);
         this.injectActionLog(action, 'Override from strategic layer', false);
+        recordTacticalDecision(this.playerId, currentTick, action.type === 'move' ? `move_${action.direction}` : 'place_bomb', 'Override from strategic layer', 0, false);
         return action;
       }
     }
@@ -104,14 +106,17 @@ export class TacticalBrain {
       const result = this.engine.queueAction(this.playerId, action);
       if (result.accepted) {
         const reasoning = tacticalResponse?.reasoning ?? (wasFallback ? 'Rule-based fallback' : 'AI decided to act');
+        const actionName = action.type === 'move' ? `move_${action.direction}` : 'place_bomb';
         this.logDecision(currentTick, action, reasoning, wasFallback, latencyMs);
         this.injectActionLog(action, reasoning, wasFallback);
+        recordTacticalDecision(this.playerId, currentTick, actionName, reasoning, latencyMs, wasFallback);
         return action;
       }
     }
 
     // Log even if no action
     this.logDecision(currentTick, null, tacticalResponse?.reasoning ?? 'No valid action', wasFallback, latencyMs);
+    recordAiError(this.playerId, currentTick, tacticalResponse?.reasoning ?? 'No valid action was accepted for this tick.');
     return null;
   }
 

@@ -7,6 +7,7 @@
 import type { GameEngine } from '../game/engine.js';
 import { TacticalBrain } from '../ai/tactical-brain.js';
 import { clearStrategy } from '../ai/strategy-store.js';
+import { clearAiTelemetry, registerAiTelemetry } from '../ai/telemetry-store.js';
 
 const BOT_NAMES = ['Claw-α', 'Claw-β', 'Claw-γ', 'Claw-δ'];
 let botCounter = 0;
@@ -33,6 +34,7 @@ export function registerAiController(
   }
 
   const brain = new TacticalBrain(playerId, engine);
+  registerAiTelemetry(playerId, source, engine.getCurrentTick());
   const bots = activeBots.get(roomId) || [];
   bots.push({ id: playerId, name: playerName, brain, source });
   activeBots.set(roomId, bots);
@@ -45,6 +47,7 @@ export function unregisterAiController(roomId: string, playerId: string): void {
 
   const nextBots = bots.filter(bot => bot.id !== playerId);
   clearStrategy(playerId);
+  clearAiTelemetry(playerId);
 
   if (nextBots.length === 0) {
     activeBots.delete(roomId);
@@ -141,6 +144,7 @@ export function clearBots(roomId: string): void {
   if (bots) {
     for (const bot of bots) {
       clearStrategy(bot.id);
+      clearAiTelemetry(bot.id);
     }
     activeBots.delete(roomId);
   }

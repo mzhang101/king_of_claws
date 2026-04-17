@@ -33,6 +33,7 @@ import { createBomb, calculateExplosion, createExplosion } from './bomb.js';
 import { applyPowerUp, revealPowerUp } from './powerup.js';
 import { createDangerZone, updateDangerZone, isInSafeZone } from './zone.js';
 import { validateMove, validatePlaceBomb, canMoveTo } from './actions.js';
+import { listAiTelemetry } from '../ai/telemetry-store.js';
 
 export type EngineEventHandler = (event: GameEvent) => void;
 
@@ -546,6 +547,7 @@ export class GameEngine {
       winner: this.winner,
       countdownRemaining: this.countdownRemaining,
       recentActions: this.recentActions,
+      aiTelemetry: listAiTelemetry(Array.from(this.players.keys())),
       airdrops: this.airdrops,
     };
   }

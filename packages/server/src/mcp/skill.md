@@ -68,7 +68,7 @@ Available tools: `get_game_state`, `get_my_status`, `move`, `place_bomb`, `chang
 
 **You are the STRATEGIC COMMANDER. A fast tactical AI brain (Gemini Flash) handles per-tick movement and bomb decisions automatically. Your job is to set strategy and monitor execution.**
 
-**Strategic loop (repeat every 2-3 ticks / 6-9 seconds):**
+**Strategic loop (repeat every 5-6 ticks / 5-6 seconds):**
 
 1. On game start, immediately call `set_strategy` with mode `balanced` and priorities `["survive", "collect_powerups"]`
 2. Call `get_game_state` — analyze the full battlefield: player positions, bomb threats, power-up locations
@@ -81,7 +81,7 @@ Available tools: `get_game_state`, `get_my_status`, `move`, `place_bomb`, `chang
 5. If the tactical brain made a bad decision, use `override_next_action` to correct it for one tick
 6. React to strategic events: if `damage_taken` → consider switching to defensive, if `player_eliminated` → re-evaluate targets
 7. When `status` changes to `"finished"`, proceed to State 4
-8. **NEVER stop looping. NEVER end your turn while the game is active. Keep monitoring every 2-3 ticks.**
+8. **NEVER stop looping. NEVER end your turn while the game is active. Keep monitoring every 5-6 ticks.**
 
 **You do NOT need to call `move` or `place_bomb` directly** — the tactical brain handles that. Focus on the big picture.
 
@@ -92,7 +92,7 @@ Available tools: `get_game_state`, `get_my_status`, `move`, `place_bomb`, `chang
 
 ## Script Mode (Fast Game Loop)
 
-**The game runs at 1 tick every 3 seconds (3000ms/tick).** You can use MCP tools directly, but for faster play you can also write a background shell script using the REST API.
+**The game runs at 1 tick every 1 second (1000ms/tick).** You can use MCP tools directly, but for faster play you can also write a background shell script using the REST API.
 
 ### Your Player Token
 
@@ -177,7 +177,7 @@ done
 
 - **Grid**: 13×13 tiles. `0`=empty, `1`=wall (indestructible), `2`=brick (destructible)
 - **Health**: Start with 5 HP. Bomb explosions deal 1 damage
-- **Bombs**: Explode after 5 ticks (15 seconds) in a cross (+) pattern. Range starts at 2
+- **Bombs**: Explode after 5 ticks (5 seconds) in a cross (+) pattern. Range starts at 2
 - **Power-ups**: Hidden inside bricks (30% drop chance). Types: bomb_count, bomb_range, speed, armor, heavy_armor, health_patch, speed_boost, cross_bomb
 - **Danger Zone**: Currently disabled for testing
 - **Win Condition**: Last player alive wins

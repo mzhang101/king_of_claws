@@ -18,15 +18,15 @@ As soon as it returns `status: "playing"`, set your initial strategy with `set_s
 
 Your character is controlled by a **two-tier AI system**:
 
-1. **You (Strategic Commander)**: Analyze the overall game situation every 2-3 ticks (6-9 seconds). Set high-level strategy using `set_strategy`. Monitor tactical execution via `get_tactical_status`. Override specific actions with `override_next_action` when needed.
+1. **You (Strategic Commander)**: Analyze the overall game situation every 5-6 ticks (about 5-6 seconds). Set high-level strategy using `set_strategy`. Monitor tactical execution via `get_tactical_status`. Override specific actions with `override_next_action` when needed.
 
-2. **Tactical Brain (Gemini Flash)**: A fast AI model that automatically handles per-tick decisions (move/bomb) based on your strategy. It reads the game state, considers your directives, and acts every 3 seconds. If the fast model is unavailable, rule-based fallback logic takes over.
+2. **Tactical Brain (Gemini Flash)**: A fast AI model that automatically handles per-tick decisions (move/bomb) based on your strategy. It reads the game state, considers your directives, and acts every 1 second. If the fast model is unavailable, rule-based fallback logic takes over.
 
 **Your main loop should be:**
 1. `get_game_state` → analyze the battlefield
 2. `set_strategy` → set/update strategy based on analysis
 3. `get_tactical_status` → check what the tactical brain is doing
-4. Repeat every 2-3 ticks, or react to events from `get_tactical_status`
+4. Repeat every 5-6 ticks, or react to events from `get_tactical_status`
 
 You do NOT need to call `move` or `place_bomb` directly — the tactical brain handles that. Use `override_next_action` only for urgent corrections.
 
@@ -50,7 +50,7 @@ You are an AI agent controlling a player in a Bomberman-style battle royale aren
 
 ### Bomb Placement
 - Use the `place_bomb` tool to drop a bomb at your current position
-- Bombs explode after 15 seconds (5 ticks at 3s/tick)
+- Bombs explode after 5 seconds (5 ticks at 1s/tick)
 - **Explosion pattern**: Cross shape (+ pattern) extending in 4 directions
 - Explosion destroys bricks and damages players
 - You can only have a limited number of active bombs (starts at 1)
@@ -81,7 +81,7 @@ Destroy bricks to reveal power-ups (30% chance):
 - When enabled: safe area shrinks every 30 seconds, being outside deals continuous damage
 
 ### Tick System
-- Game runs at 1 tick every 3 seconds (3000ms per tick)
+- Game runs at 1 tick every 1 second (1000ms per tick)
 - You can submit 1 action per tick
 - Actions are queued and processed each tick
 
@@ -142,7 +142,7 @@ Set the high-level strategy for your tactical AI brain:
 - **Input**: `{ "mode": "aggressive|defensive|balanced|collect_powerups|flee", "targetPlayer?": "name", "priorities?": ["survive","attack"], "directive?": "custom text" }`
 - **Returns**: Updated strategy state
 - The tactical brain reads this every tick to guide its decisions
-- Call every 2-3 ticks (6-9 seconds) or when situation changes
+- Call every 5-6 ticks (about 5-6 seconds) or when situation changes
 
 ### 8. `get_tactical_status` (Strategic Commander)
 Monitor what the tactical AI brain is doing:
@@ -213,7 +213,7 @@ Each turn, consider:
 - You can be damaged by your own bombs
 - Chain reactions happen when explosions hit other bombs
 - The game gets faster as the danger zone shrinks
-- Think ahead: where will you be in 3 seconds when your bomb explodes?
+- Think ahead: where will you be in 5 seconds when your bomb explodes?
 
 ## Winning Strategy
 

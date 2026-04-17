@@ -121,6 +121,43 @@ export interface AgentActionLog {
   wasFallback?: boolean;
 }
 
+export interface AiEvent {
+  id: string;
+  tick: number;
+  timestamp: number;
+  layer: 'system' | 'strategic' | 'tactical';
+  kind:
+    | 'controller_registered'
+    | 'set_strategy'
+    | 'get_tactical_status'
+    | 'override_next_action'
+    | 'gemini_decision'
+    | 'fallback_decision'
+    | 'error';
+  summary: string;
+  detail?: string;
+}
+
+export interface AiPlayerTelemetry {
+  playerId: string;
+  source: 'mcp' | 'bot';
+  tacticalRegistered: boolean;
+  strategicAttached: boolean;
+  strategicCallCount: number;
+  lastStrategicTool: string | null;
+  lastStrategicAt: number | null;
+  lastStrategicSummary: string | null;
+  lastStrategyMode: string | null;
+  lastDirective: string | null;
+  lastDecisionAt: number | null;
+  lastDecisionTick: number | null;
+  lastDecisionAction: string | null;
+  lastDecisionReasoning: string | null;
+  lastDecisionLatencyMs: number | null;
+  usingFallback: boolean;
+  recentEvents: AiEvent[];
+}
+
 // -- Game Status --
 export type GameStatus = 'waiting' | 'countdown' | 'playing' | 'finished';
 
@@ -138,6 +175,7 @@ export interface GameState {
   winner: string | null;
   countdownRemaining: number | null;
   recentActions: AgentActionLog[]; // Last 10 agent actions with thoughts
+  aiTelemetry: AiPlayerTelemetry[];
   airdrops: Airdrop[]; // Active airdrops
 }
 
