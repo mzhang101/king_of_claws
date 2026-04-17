@@ -7,9 +7,10 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { GameEngine } from '../game/engine.js';
 import { PLAYER_INITIAL_HEALTH } from '@king-of-claws/shared';
 import type { Direction } from '@king-of-claws/shared';
+import { getGeminiDiagnostics } from '../ai/gemini-client.js';
 import { getStrategy, setStrategy, getEvents, clearEvents, pushEvent } from '../ai/strategy-store.js';
 import type { StrategyMode } from '../ai/strategy-store.js';
-import { getAllBotBrains } from '../game/bot.js';
+import { getAiBrain } from '../game/bot.js';
 
 /**
  * Register all game MCP tools on a McpServer instance for a specific player.
@@ -424,8 +425,7 @@ export function registerGameTools(
       const events = getEvents(playerId);
 
       // Find the brain for this player (may be a bot or MCP player)
-      const botBrains = getAllBotBrains(state.roomId);
-      const brain = botBrains.find(b => b.playerId === playerId);
+      const brain = getAiBrain(state.roomId, playerId);
 
       const recentDecisions = brain?.getRecentDecisions(3) ?? [];
       const isFallback = brain?.isFallbackMode() ?? true;
@@ -453,6 +453,8 @@ export function registerGameTools(
               details: e.details,
             })),
             isFallbackMode: isFallback,
+            brainRegistered: Boolean(brain),
+            geminiDiagnostics: getGeminiDiagnostics(),
             playerStatus: player ? {
               alive: player.alive,
               health: player.health,
@@ -488,8 +490,7 @@ export function registerGameTools(
       }
 
       // Find the brain for this player
-      const botBrains = getAllBotBrains(engine.getState().roomId);
-      const brain = botBrains.find(b => b.playerId === playerId);
+      const brain = getAiBrain(engine.getState().roomId, playerId);
 
       if (brain) {
         const playerAction = action === 'move'

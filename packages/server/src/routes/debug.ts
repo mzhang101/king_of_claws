@@ -3,6 +3,8 @@
 // ============================================================
 
 import type { Express } from 'express';
+import { getGeminiDiagnostics } from '../ai/gemini-client.js';
+import { getAiControllerSummary } from '../game/bot.js';
 import type { RoomManager } from '../room/manager.js';
 
 let serverStartTime = Date.now();
@@ -52,6 +54,27 @@ export function registerDebugRoutes(app: Express, roomManager: RoomManager): voi
       playerCount: room.getEngine().getPlayerCount(),
       createdAt: room.createdAt,
       finishedAt: room.getFinishedAt(),
+    });
+  });
+
+  app.get('/debug/ai', (_req, res) => {
+    const rooms = roomManager.listRooms();
+    const aiControllers = rooms.map(room => ({
+      roomId: room.id,
+      roomName: room.name,
+      status: room.status,
+      controllers: getAiControllerSummary(room.id),
+    }));
+
+    res.json({
+      status: 'ok',
+      gemini: getGeminiDiagnostics(),
+      aiControllers,
+      hints: [
+        'If gemini.totalCalls stays 0, no TacticalBrain is invoking Gemini yet.',
+        'If brainRegistered is false in get_tactical_status, the player is not attached to TacticalBrain.',
+        'If gemini.lastError is set, the API is being reached but failing.',
+      ],
     });
   });
 }

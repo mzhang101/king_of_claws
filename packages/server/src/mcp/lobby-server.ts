@@ -5,6 +5,7 @@
 import { z } from 'zod';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { RoomManager } from '../room/manager.js';
+import { registerAiController } from '../game/bot.js';
 import { registerGameTools } from './tools.js';
 import { createPlayerAccount } from '../player/account.js';
 
@@ -157,6 +158,8 @@ export function createLobbyMcpServer(
           }],
         };
       }
+
+      registerAiController(roomId, playerId, assignedName, engine, 'mcp');
 
       room.onPlayerConnected(playerId, assignedName);
 

@@ -304,20 +304,27 @@ export class GameEngine {
       const player = this.players.get(playerId);
       if (!player || !player.alive) continue;
 
-      // Log action with thought and shout
-      const actionLog: AgentActionLog = {
-        playerId: player.id,
-        playerName: player.name,
-        tick: this.currentTick,
-        action: action.type === 'move' ? `move_${action.direction}` : 'place_bomb',
-        thought: action.thought,
-        shout: action.shout,
-        timestamp: Date.now(),
-      };
-      this.recentActions.push(actionLog);
-      // Keep only last 10 actions
-      if (this.recentActions.length > 10) {
-        this.recentActions.shift();
+      const actionName = action.type === 'move' ? `move_${action.direction}` : 'place_bomb';
+      const alreadyLogged = this.recentActions.some(log =>
+        log.playerId === player.id &&
+        log.tick === this.currentTick &&
+        log.action === actionName
+      );
+
+      if (!alreadyLogged) {
+        const actionLog: AgentActionLog = {
+          playerId: player.id,
+          playerName: player.name,
+          tick: this.currentTick,
+          action: actionName,
+          thought: action.thought,
+          shout: action.shout,
+          timestamp: Date.now(),
+        };
+        this.recentActions.push(actionLog);
+        if (this.recentActions.length > 10) {
+          this.recentActions.shift();
+        }
       }
 
       if (action.type === 'move') {

@@ -3,7 +3,7 @@
 // ============================================================
 
 import { GameEngine } from '../game/engine.js';
-import { runBotDecisions } from '../game/bot.js';
+import { clearAiControllers, runAiControllerDecisions } from '../game/bot.js';
 import type { GameState, RoomSummary, MatchStats, GameStatus } from '@king-of-claws/shared';
 import type { ServerMessage, GameEvent } from '@king-of-claws/shared';
 import type { WebSocket } from 'ws';
@@ -26,7 +26,7 @@ export class Room {
 
     // Wire engine pre-tick callback to run bot AI decisions
     this.engine.setOnPreTick(async () => {
-      await runBotDecisions(id);
+      await runAiControllerDecisions(id);
     });
 
     // Wire engine events to spectator broadcast
@@ -178,6 +178,7 @@ export class Room {
 
   destroy(): void {
     this.engine.stop();
+    clearAiControllers(this.id);
     for (const ws of this.spectators) {
       ws.close();
     }
