@@ -3,6 +3,7 @@
 // ============================================================
 
 import { GameEngine } from '../game/engine.js';
+import { runBotDecisions } from '../game/bot.js';
 import type { GameState, RoomSummary, MatchStats, GameStatus } from '@king-of-claws/shared';
 import type { ServerMessage, GameEvent } from '@king-of-claws/shared';
 import type { WebSocket } from 'ws';
@@ -22,6 +23,11 @@ export class Room {
     this.name = name;
     this.createdAt = Date.now();
     this.engine = new GameEngine(id);
+
+    // Wire engine pre-tick callback to run bot AI decisions
+    this.engine.setOnPreTick(async () => {
+      await runBotDecisions(id);
+    });
 
     // Wire engine events to spectator broadcast
     this.engine.setOnStateUpdate((state) => {

@@ -389,18 +389,64 @@ export default function PlayerPage() {
 
       {/* Agent Thoughts - Bottom */}
       {gameState && gameState.recentActions && gameState.recentActions.length > 0 && (
-        <section className="border-t border-surface-container-highest p-4 md:p-6 max-h-48 overflow-y-auto bg-surface-container-low">
-          <h3 className="font-headline font-bold text-lg tracking-tight text-on-surface uppercase mb-4">
-            AGENT_THOUGHTS
-          </h3>
+        <section className="border-t border-surface-container-highest p-4 md:p-6 max-h-64 overflow-y-auto bg-surface-container-low">
+          <div className="flex items-center gap-3 mb-4">
+            <h3 className="font-headline font-bold text-lg tracking-tight text-on-surface uppercase">
+              AI_BRAIN
+            </h3>
+            {/* Strategy mode badge from the latest action */}
+            {(() => {
+              const myActions = gameState.recentActions.filter(log => log.playerId === playerInfo.agent.id);
+              const latest = myActions[myActions.length - 1];
+              if (!latest?.strategyMode) return null;
+              const modeColors: Record<string, string> = {
+                aggressive: 'border-error/40 text-error bg-error/10',
+                defensive: 'border-secondary/40 text-secondary bg-secondary/10',
+                balanced: 'border-primary/40 text-primary bg-primary/10',
+                collect_powerups: 'border-tertiary/40 text-tertiary bg-tertiary/10',
+                flee: 'border-error/40 text-error bg-error/10',
+              };
+              return (
+                <span className={`px-2 py-0.5 border font-label text-[9px] uppercase tracking-[0.15em] ${modeColors[latest.strategyMode] ?? 'border-outline-variant/30 text-on-surface-variant'}`}>
+                  {latest.strategyMode}
+                </span>
+              );
+            })()}
+            {/* Fallback indicator */}
+            {(() => {
+              const myActions = gameState.recentActions.filter(log => log.playerId === playerInfo.agent.id);
+              const latest = myActions[myActions.length - 1];
+              if (!latest?.wasFallback) return null;
+              return (
+                <span className="px-2 py-0.5 border border-error/30 font-label text-[9px] uppercase tracking-[0.15em] text-error bg-error/5">
+                  FALLBACK
+                </span>
+              );
+            })()}
+          </div>
           <div className="space-y-2">
             {gameState.recentActions.slice().reverse().filter(log => log.playerId === playerInfo.agent.id).map((log, idx) => (
               <div key={`${log.tick}-${idx}`} className="border-l-2 border-primary/30 pl-3 py-1 space-y-1">
                 <div className="flex items-center gap-2">
                   <span className="text-on-surface-variant font-headline text-[10px]">[T{log.tick}]</span>
-                  <span className="text-on-surface text-body-sm">{log.action}</span>
+                  <span className="text-on-surface text-body-sm font-medium">{log.action}</span>
+                  {log.strategyMode && (
+                    <span className="text-on-surface-variant font-headline text-[9px] uppercase opacity-60">
+                      {log.strategyMode}
+                    </span>
+                  )}
+                  {log.wasFallback && (
+                    <span className="text-error font-headline text-[9px] uppercase">
+                      RULE
+                    </span>
+                  )}
                 </div>
-                {log.thought && (
+                {log.aiReasoning && (
+                  <p className="text-primary text-body-sm leading-relaxed">
+                    🤖 {log.aiReasoning}
+                  </p>
+                )}
+                {log.thought && !log.aiReasoning && (
                   <p className="text-primary text-body-sm leading-relaxed">
                     💭 {log.thought}
                   </p>

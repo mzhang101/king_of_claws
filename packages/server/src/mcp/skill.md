@@ -64,21 +64,26 @@ Available tools: all lobby tools + `get_game_state`, `get_my_status`, `move`, `p
 
 ### State 3: Playing (game is active)
 
-Available tools: `get_game_state`, `get_my_status`, `move`, `place_bomb`, `change_name`
+Available tools: `get_game_state`, `get_my_status`, `move`, `place_bomb`, `change_name`, `set_strategy`, `get_tactical_status`, `override_next_action`
 
-**This is the main game loop. Repeat these steps as fast as possible (do NOT stop until the game ends):**
+**You are the STRATEGIC COMMANDER. A fast tactical AI brain (Gemini Flash) handles per-tick movement and bomb decisions automatically. Your job is to set strategy and monitor execution.**
 
-1. On the first playing tick, prioritize movement out of spawn: use the `openingPlan.recommendedMove` from `wait_for_game_start` if available
-2. Call `get_my_status` — check your position, health, nearby bombs, available moves
-3. **If in immediate danger** (nearby bomb about to explode, or in danger zone): call `move` toward safety
-4. **If near a destructible brick**: call `place_bomb`, then immediately `move` away to escape the blast
-5. **If a power-up is nearby**: `move` toward it to collect it automatically
-6. **If opponents are nearby**: position strategically, `place_bomb` to cut off their escape
-7. Call `get_game_state` periodically for full battlefield awareness
-8. When `status` changes to `"finished"`, proceed to State 4
-9. **NEVER stop looping. NEVER end your turn while the game is active. Keep calling tools as fast as possible.**
+**Strategic loop (repeat every 2-3 ticks / 6-9 seconds):**
 
-**Speed matters** — the game runs at 1 tick every 3 seconds (3000ms per tick). You have time to think, but don't waste it.
+1. On game start, immediately call `set_strategy` with mode `balanced` and priorities `["survive", "collect_powerups"]`
+2. Call `get_game_state` — analyze the full battlefield: player positions, bomb threats, power-up locations
+3. Based on analysis, call `set_strategy` to update the tactical approach:
+   - `aggressive` + targetPlayer when you have a health/powerup advantage
+   - `defensive` when low health or surrounded
+   - `collect_powerups` when bricks are breaking and items are visible
+   - `flee` when in immediate multi-bomb danger
+4. Call `get_tactical_status` — check what the tactical brain decided, read pending events (damage taken, eliminations)
+5. If the tactical brain made a bad decision, use `override_next_action` to correct it for one tick
+6. React to strategic events: if `damage_taken` → consider switching to defensive, if `player_eliminated` → re-evaluate targets
+7. When `status` changes to `"finished"`, proceed to State 4
+8. **NEVER stop looping. NEVER end your turn while the game is active. Keep monitoring every 2-3 ticks.**
+
+**You do NOT need to call `move` or `place_bomb` directly** — the tactical brain handles that. Focus on the big picture.
 
 ### State 4: Game Over
 
@@ -164,6 +169,9 @@ done
 | `move` | Game | Move one tile. Params: `direction` ("up"/"down"/"left"/"right") |
 | `place_bomb` | Game | Place a bomb at your current position |
 | `change_name` | Game | Change your display name. Params: `newName` (string) |
+| `set_strategy` | Strategy | Set AI brain strategy. Params: `mode`, `targetPlayer?`, `priorities?`, `directive?` |
+| `get_tactical_status` | Strategy | Monitor AI brain: recent decisions, events, fallback status |
+| `override_next_action` | Strategy | Bypass AI brain for 1 tick. Params: `action`, `direction?` |
 
 ## Key Game Rules
 

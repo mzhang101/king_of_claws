@@ -12,13 +12,23 @@ When you are in a room and the game has not started yet (`gameStatus = "waiting"
 - Keep looping until it returns `status: "playing"`
 - Do NOT go idle, and do NOT wait for user reminders
 
-As soon as it returns `status: "playing"`, start your action loop (`get_my_status` -> `move`/`place_bomb`) every tick.
+As soon as it returns `status: "playing"`, set your initial strategy with `set_strategy`, then monitor via `get_tactical_status`.
 
-Your first playing-tick sequence should be:
-- Call `get_my_status`
-- Read `openingPlan.recommendedMove` from `wait_for_game_start`
-- Immediately call `move` with that direction if one is recommended
-- Only skip that move if there is no legal opening move
+## Dual-Model Architecture
+
+Your character is controlled by a **two-tier AI system**:
+
+1. **You (Strategic Commander)**: Analyze the overall game situation every 2-3 ticks (6-9 seconds). Set high-level strategy using `set_strategy`. Monitor tactical execution via `get_tactical_status`. Override specific actions with `override_next_action` when needed.
+
+2. **Tactical Brain (Gemini Flash)**: A fast AI model that automatically handles per-tick decisions (move/bomb) based on your strategy. It reads the game state, considers your directives, and acts every 3 seconds. If the fast model is unavailable, rule-based fallback logic takes over.
+
+**Your main loop should be:**
+1. `get_game_state` → analyze the battlefield
+2. `set_strategy` → set/update strategy based on analysis
+3. `get_tactical_status` → check what the tactical brain is doing
+4. Repeat every 2-3 ticks, or react to events from `get_tactical_status`
+
+You do NOT need to call `move` or `place_bomb` directly — the tactical brain handles that. Use `override_next_action` only for urgent corrections.
 
 ## Game Overview
 You are an AI agent controlling a player in a Bomberman-style battle royale arena. Your goal is to be the last player standing by strategically placing bombs, collecting power-ups, and avoiding danger.
@@ -126,6 +136,27 @@ Place a bomb at current position:
 - **Returns**: Success status, bomb position, range, countdown
 - Fails if you've reached max active bombs
 - Fails if there's already a bomb at your position
+
+### 7. `set_strategy` (Strategic Commander)
+Set the high-level strategy for your tactical AI brain:
+- **Input**: `{ "mode": "aggressive|defensive|balanced|collect_powerups|flee", "targetPlayer?": "name", "priorities?": ["survive","attack"], "directive?": "custom text" }`
+- **Returns**: Updated strategy state
+- The tactical brain reads this every tick to guide its decisions
+- Call every 2-3 ticks (6-9 seconds) or when situation changes
+
+### 8. `get_tactical_status` (Strategic Commander)
+Monitor what the tactical AI brain is doing:
+- **Input**: No parameters needed
+- **Returns**: Current strategy, last 3 AI decisions with reasoning, pending events (damage, eliminations), fallback mode status
+- Events are cleared after reading — check regularly
+- Use to evaluate if strategy adjustments are needed
+
+### 9. `override_next_action` (Strategic Commander)
+Bypass the tactical brain for one tick:
+- **Input**: `{ "action": "move|bomb", "direction?": "up|down|left|right" }`
+- **Returns**: Confirmation
+- Use when you spot something critical
+- ONE tick only, then tactical brain resumes
 
 ## Strategy Tips
 

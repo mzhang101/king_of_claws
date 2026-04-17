@@ -115,6 +115,10 @@ export interface AgentActionLog {
   thought?: string;
   shout?: string;
   timestamp: number;
+  // AI tactical brain fields
+  aiReasoning?: string;
+  strategyMode?: string;
+  wasFallback?: boolean;
 }
 
 // -- Game Status --

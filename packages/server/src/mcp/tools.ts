@@ -7,6 +7,9 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { GameEngine } from '../game/engine.js';
 import { PLAYER_INITIAL_HEALTH } from '@king-of-claws/shared';
 import type { Direction } from '@king-of-claws/shared';
+import { getStrategy, setStrategy, getEvents, clearEvents, pushEvent } from '../ai/strategy-store.js';
+import type { StrategyMode } from '../ai/strategy-store.js';
+import { getAllBotBrains } from '../game/bot.js';
 
 /**
  * Register all game MCP tools on a McpServer instance for a specific player.
@@ -348,6 +351,175 @@ export function registerGameTools(
             message: `Your name has been changed to "${newName}"`,
             newName: newName,
           }, null, 2),
+        }],
+      };
+    },
+  );
+
+  // ---- Tool 6: set_strategy (Strategic Layer) ----
+  server.tool(
+    'set_strategy',
+    'Set the high-level strategy for your AI tactical brain. A fast AI model automatically handles per-tick movement and bomb decisions based on this strategy. You are the strategic commander — set the overall approach and the tactical brain executes it every tick. Call this every 2-3 ticks (6-9 seconds) or when the situation changes significantly.',
+    {
+      mode: z.enum(['aggressive', 'defensive', 'balanced', 'collect_powerups', 'flee'])
+        .describe('Strategy mode: aggressive (hunt players), defensive (avoid fights), balanced (adaptive), collect_powerups (prioritize items), flee (escape danger)'),
+      targetPlayer: z.string().optional()
+        .describe('Target player name or ID to focus on (for aggressive mode)'),
+      priorities: z.array(z.string()).optional()
+        .describe('Ordered priority list, e.g. ["survive", "attack player-2", "collect powerups"]'),
+      directive: z.string().max(200).optional()
+        .describe('Free-text tactical directive for the AI brain, e.g. "focus on top-left area" or "avoid center"'),
+    },
+    async ({ mode, targetPlayer, priorities, directive }) => {
+      const engine = getEngine();
+      const state = engine.getState();
+
+      // Resolve target player
+      let targetPlayerId: string | null = null;
+      if (targetPlayer) {
+        const target = state.players.find(p =>
+          p.name.toLowerCase() === targetPlayer.toLowerCase() || p.id === targetPlayer
+        );
+        if (target && target.alive) {
+          targetPlayerId = target.id;
+        }
+      }
+
+      const updated = setStrategy(playerId, {
+        mode: mode as StrategyMode,
+        targetPlayerId,
+        priorities: priorities ?? [],
+        customDirective: directive ?? null,
+        lastUpdatedTick: state.tick,
+      });
+
+      pushEvent(playerId, {
+        tick: state.tick,
+        type: 'strategy_changed',
+        details: `Strategy changed to ${mode}${targetPlayer ? ` targeting ${targetPlayer}` : ''}`,
+      });
+
+      return {
+        content: [{
+          type: 'text' as const,
+          text: JSON.stringify({
+            success: true,
+            strategy: updated,
+            message: `Strategy updated to "${mode}". The tactical AI brain will now follow this strategy for per-tick decisions.`,
+          }, null, 2),
+        }],
+      };
+    },
+  );
+
+  // ---- Tool 7: get_tactical_status (Strategic Layer) ----
+  server.tool(
+    'get_tactical_status',
+    'Check what the tactical AI brain is doing. Returns the current strategy, recent AI decisions (last 3 ticks), pending strategic events (damage taken, eliminations, etc.), and whether the AI is using fallback mode. Use this to monitor and adjust your strategy.',
+    {},
+    async () => {
+      const engine = getEngine();
+      const state = engine.getState();
+      const strategy = getStrategy(playerId);
+      const events = getEvents(playerId);
+
+      // Find the brain for this player (may be a bot or MCP player)
+      const botBrains = getAllBotBrains(state.roomId);
+      const brain = botBrains.find(b => b.playerId === playerId);
+
+      const recentDecisions = brain?.getRecentDecisions(3) ?? [];
+      const isFallback = brain?.isFallbackMode() ?? true;
+
+      // Clear events after reading
+      clearEvents(playerId);
+
+      const player = engine.getPlayer(playerId);
+
+      return {
+        content: [{
+          type: 'text' as const,
+          text: JSON.stringify({
+            currentStrategy: strategy,
+            recentDecisions: recentDecisions.map(d => ({
+              tick: d.tick,
+              action: d.action,
+              reasoning: d.reasoning,
+              wasFallback: d.wasFallback,
+              latencyMs: d.latencyMs,
+            })),
+            pendingEvents: events.map(e => ({
+              tick: e.tick,
+              type: e.type,
+              details: e.details,
+            })),
+            isFallbackMode: isFallback,
+            playerStatus: player ? {
+              alive: player.alive,
+              health: player.health,
+              position: { x: player.x, y: player.y },
+            } : null,
+            currentTick: state.tick,
+            tip: 'Adjust strategy with set_strategy if the tactical AI is not performing well. Use override_next_action for urgent corrections.',
+          }, null, 2),
+        }],
+      };
+    },
+  );
+
+  // ---- Tool 8: override_next_action (Strategic Layer) ----
+  server.tool(
+    'override_next_action',
+    'Directly queue an action for the next tick, bypassing the tactical AI brain. Use this when you spot something critical that the AI might miss. The override applies to ONE tick only, then the tactical brain resumes control.',
+    {
+      action: z.enum(['move', 'bomb']).describe('The action type'),
+      direction: z.enum(['up', 'down', 'left', 'right']).optional()
+        .describe('Direction (required for move action)'),
+    },
+    async ({ action, direction }) => {
+      const engine = getEngine();
+
+      if (action === 'move' && !direction) {
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({ success: false, error: 'Direction required for move action' }),
+          }],
+        };
+      }
+
+      // Find the brain for this player
+      const botBrains = getAllBotBrains(engine.getState().roomId);
+      const brain = botBrains.find(b => b.playerId === playerId);
+
+      if (brain) {
+        const playerAction = action === 'move'
+          ? { type: 'move' as const, direction: direction! }
+          : { type: 'place_bomb' as const };
+        brain.setOverride(playerAction);
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({
+              success: true,
+              message: `Override set: ${action}${direction ? ` ${direction}` : ''} will execute next tick. Tactical brain resumes after.`,
+            }),
+          }],
+        };
+      }
+
+      // If no brain (MCP player, not a bot), queue directly
+      const playerAction = action === 'move'
+        ? { type: 'move' as const, direction: direction! }
+        : { type: 'place_bomb' as const };
+      const result = engine.queueAction(playerId, playerAction);
+
+      return {
+        content: [{
+          type: 'text' as const,
+          text: JSON.stringify({
+            success: result.accepted,
+            message: result.message,
+          }),
         }],
       };
     },

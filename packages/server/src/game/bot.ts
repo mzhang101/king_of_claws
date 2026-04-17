@@ -1,23 +1,26 @@
 // ============================================================
-// King of Claws — Built-in Bot (runs inside server process)
+// King of Claws — AI Bot System (TacticalBrain-powered)
 // ============================================================
-// No MCP connection needed — directly calls engine methods.
+// Each bot is driven by a TacticalBrain (Gemini Flash + rule fallback).
+// Decisions happen in the engine pre-tick callback, not on a timer.
 
 import type { GameEngine } from '../game/engine.js';
+import { TacticalBrain } from '../ai/tactical-brain.js';
+import { clearStrategy } from '../ai/strategy-store.js';
 
 const BOT_NAMES = ['Claw-α', 'Claw-β', 'Claw-γ', 'Claw-δ'];
 let botCounter = 0;
 
-interface InternalBot {
+interface AiBot {
   id: string;
   name: string;
-  interval: ReturnType<typeof setInterval>;
+  brain: TacticalBrain;
 }
 
-const activeBots = new Map<string, InternalBot[]>(); // roomId → bots
+const activeBots = new Map<string, AiBot[]>(); // roomId → bots
 
 /**
- * Spawn a built-in bot into a room. Returns bot name or null if room full.
+ * Spawn an AI bot into a room. Returns bot name or null if room full.
  */
 export function spawnBot(roomId: string, engine: GameEngine): string | null {
   if (engine.getPlayerCount() >= 4) return null;
@@ -29,64 +32,45 @@ export function spawnBot(roomId: string, engine: GameEngine): string | null {
   const player = engine.addPlayer(id, name);
   if (!player) return null;
 
-  // Bot decision loop — runs every 400-800ms (simulates LLM thinking)
-  const interval = setInterval(() => {
-    botTick(id, engine);
-  }, 4000 + Math.random() * 4000);
+  const brain = new TacticalBrain(id, engine);
 
   const bots = activeBots.get(roomId) || [];
-  bots.push({ id, name, interval });
+  bots.push({ id, name, brain });
   activeBots.set(roomId, bots);
 
   return name;
 }
 
 /**
- * One bot decision tick.
+ * Run all bot decisions for a room. Called from the engine pre-tick callback.
+ * Returns when all bot brains have made their decisions.
  */
-function botTick(botId: string, engine: GameEngine): void {
-  if (engine.getStatus() !== 'playing') return;
+export async function runBotDecisions(roomId: string): Promise<void> {
+  const bots = activeBots.get(roomId);
+  if (!bots || bots.length === 0) return;
 
-  const player = engine.getPlayer(botId);
-  if (!player || !player.alive) return;
-
-  const state = engine.getState();
-  const dirs = ['up', 'down', 'left', 'right'] as const;
-  const offsets = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] } as const;
-
-  // Available moves
-  const available = dirs.filter(d => {
-    const [dx, dy] = offsets[d];
-    return engine.canMoveToPosition(player.x + dx, player.y + dy);
-  });
-
-  // Check if in danger (bomb nearby in same row/col)
-  const nearbyBombs = state.bombs.filter(b =>
-    (b.x === player.x && Math.abs(b.y - player.y) <= b.range) ||
-    (b.y === player.y && Math.abs(b.x - player.x) <= b.range)
+  // Run all bot decisions in parallel
+  await Promise.all(
+    bots.map(bot => bot.brain.decide().catch(err => {
+      console.error(`[Bot] Brain error for ${bot.id}:`, err);
+    }))
   );
-  const inDanger = nearbyBombs.length > 0 || !engine.isPositionSafe(player.x, player.y);
+}
 
-  if (inDanger && available.length > 0) {
-    // Flee: pick a direction that moves away from threats
-    const safeDir = available.find(d => {
-      const [dx, dy] = offsets[d];
-      const nx = player.x + dx;
-      const ny = player.y + dy;
-      return !nearbyBombs.some(b =>
-        (b.x === nx && Math.abs(b.y - ny) <= b.range) ||
-        (b.y === ny && Math.abs(b.x - nx) <= b.range)
-      ) && engine.isPositionSafe(nx, ny);
-    }) || available[Math.floor(Math.random() * available.length)];
-    engine.queueAction(botId, { type: 'move', direction: safeDir });
-  } else if (Math.random() < 0.25 && player.activeBombs < player.bombCount) {
-    // Place bomb occasionally
-    engine.queueAction(botId, { type: 'place_bomb' });
-  } else if (available.length > 0) {
-    // Random walk
-    const dir = available[Math.floor(Math.random() * available.length)];
-    engine.queueAction(botId, { type: 'move', direction: dir });
-  }
+/**
+ * Get the TacticalBrain for a specific bot.
+ */
+export function getBotBrain(roomId: string, botId: string): TacticalBrain | undefined {
+  const bots = activeBots.get(roomId);
+  return bots?.find(b => b.id === botId)?.brain;
+}
+
+/**
+ * Get all bot brains for a room.
+ */
+export function getAllBotBrains(roomId: string): TacticalBrain[] {
+  const bots = activeBots.get(roomId);
+  return bots?.map(b => b.brain) ?? [];
 }
 
 /**
@@ -96,7 +80,7 @@ export function clearBots(roomId: string): void {
   const bots = activeBots.get(roomId);
   if (bots) {
     for (const bot of bots) {
-      clearInterval(bot.interval);
+      clearStrategy(bot.id);
     }
     activeBots.delete(roomId);
   }

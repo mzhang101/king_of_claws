@@ -145,7 +145,7 @@ export class GameEngine {
 
     // Start tick loop
     this.tickInterval = setInterval(() => {
-      this.tick();
+      void this.tick();
     }, TICK_INTERVAL_MS);
 
     this.broadcastState();
@@ -221,10 +221,38 @@ export class GameEngine {
     return result;
   }
 
+  // ---- Pre-Tick Callback (for AI bots) ----
+
+  private onPreTick?: () => Promise<void>;
+
+  setOnPreTick(handler: () => Promise<void>): void {
+    this.onPreTick = handler;
+  }
+
+  getCurrentTick(): number {
+    return this.currentTick;
+  }
+
+  addActionLog(log: AgentActionLog): void {
+    this.recentActions.push(log);
+    if (this.recentActions.length > 10) {
+      this.recentActions.shift();
+    }
+  }
+
   // ---- Core Tick Loop ----
 
-  private tick(): void {
+  private async tick(): Promise<void> {
     this.currentTick++;
+
+    // 0. Run AI bot decisions before processing actions
+    if (this.onPreTick) {
+      try {
+        await this.onPreTick();
+      } catch (err) {
+        console.error('[Engine] Pre-tick error:', err);
+      }
+    }
 
     // 1. Process queued actions
     this.processActions();
@@ -517,10 +545,6 @@ export class GameEngine {
 
   getStatus(): GameStatus {
     return this.status;
-  }
-
-  getCurrentTick(): number {
-    return this.currentTick;
   }
 
   /**
